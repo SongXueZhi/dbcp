@@ -17,12 +17,14 @@
 
 package org.apache.commons.dbcp2;
 
+import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Hashtable;
+import java.util.Random;
 import java.util.Stack;
 
 import junit.framework.TestCase;
@@ -103,28 +105,29 @@ public abstract class TestConnectionPool extends TestCase {
             assertTrue(c[i] != null);
 
             // generate SQLWarning on connection
-            c[i].prepareCall("warning");
+            try (CallableStatement cs = c[i].prepareCall("warning")){
+            }
         }
 
-        for (int i = 0; i < c.length; i++) {
-            assertNotNull(c[i].getWarnings());
+        for (Connection element : c) {
+            assertNotNull(element.getWarnings());
         }
 
-        for (int i = 0; i < c.length; i++) {
-            c[i].close();
+        for (Connection element : c) {
+            element.close();
         }
 
         for (int i = 0; i < c.length; i++) {
             c[i] = newConnection();
         }
 
-        for (int i = 0; i < c.length; i++) {
+        for (Connection element : c) {
             // warnings should have been cleared by putting the connection back in the pool
-            assertNull(c[i].getWarnings());
+            assertNull(element.getWarnings());
         }
 
-        for (int i = 0; i < c.length; i++) {
-            c[i].close();
+        for (Connection element : c) {
+            element.close();
         }
     }
 
@@ -360,8 +363,7 @@ public abstract class TestConnectionPool extends TestCase {
             stmt.close();
         }
         conn.close();
-        try {
-            conn.createStatement();
+        try (Statement s = conn.createStatement()){
             fail("Can't use closed connections");
         } catch(SQLException e) {
             // expected
@@ -408,8 +410,8 @@ public abstract class TestConnectionPool extends TestCase {
         }
         // Close connections one at a time and get new ones, making sure
         // the new ones come from the pool
-        for (int i = 0; i < c.length; i++) {
-            c[i].close();
+        for (Connection element : c) {
+            element.close();
             Connection con = newConnection();
             Connection underCon =
                 ((DelegatingConnection<?>) con).getInnermostDelegate();
@@ -427,17 +429,24 @@ public abstract class TestConnectionPool extends TestCase {
     }
 
     public void testAutoCommitBehavior() throws Exception {
-        Connection conn = newConnection();
-        assertNotNull(conn);
-        assertTrue(conn.getAutoCommit());
-        conn.setAutoCommit(false);
-        conn.close();
+        Connection conn0 = newConnection();
+        assertNotNull("connection should not be null", conn0);
+        assertTrue("autocommit should be true for conn0", conn0.getAutoCommit());
+
+        Connection conn1 = newConnection();
+        assertTrue("autocommit should be true for conn1", conn1.getAutoCommit() );
+        conn1.close();
+
+        assertTrue("autocommit should be true for conn0", conn0.getAutoCommit());
+        conn0.setAutoCommit(false);
+        assertFalse("autocommit should be false for conn0", conn0.getAutoCommit());
+        conn0.close();
 
         Connection conn2 = newConnection();
-        assertTrue( conn2.getAutoCommit() );
+        assertTrue("autocommit should be true for conn2", conn2.getAutoCommit() );
 
         Connection conn3 = newConnection();
-        assertTrue( conn3.getAutoCommit() );
+        assertTrue("autocommit should be true for conn3", conn3.getAutoCommit() );
 
         conn2.close();
 
@@ -454,8 +463,8 @@ public abstract class TestConnectionPool extends TestCase {
                 assertTrue(!conn[j].equals(conn[i]));
             }
         }
-        for(int i=0;i<conn.length;i++) {
-            conn[i].close();
+        for (Connection element : conn) {
+            element.close();
         }
     }
 
@@ -471,8 +480,8 @@ public abstract class TestConnectionPool extends TestCase {
             }
         }
 
-        for (int i = 0; i < c.length; i++) {
-            c[i].close();
+        for (Connection element : c) {
+            element.close();
         }
     }
 
@@ -490,8 +499,8 @@ public abstract class TestConnectionPool extends TestCase {
         // get a new connection
         c[0] = newConnection();
 
-        for (int i = 0; i < c.length; i++) {
-            c[i].close();
+        for (Connection element : c) {
+            element.close();
         }
     }
 
@@ -510,8 +519,8 @@ public abstract class TestConnectionPool extends TestCase {
             // throw an exception
         }
 
-        for (int i = 0; i < c.length; i++) {
-            c[i].close();
+        for (Connection element : c) {
+            element.close();
         }
     }
 
@@ -586,13 +595,10 @@ public abstract class TestConnectionPool extends TestCase {
                 } catch(Exception e) {
                     // ignored
                 }
-                Connection conn = null;
-                PreparedStatement stmt = null;
-                ResultSet rset = null;
-                try {
-                    conn = newConnection();
-                    stmt = conn.prepareStatement("select 'literal', SYSDATE from dual");
-                    rset = stmt.executeQuery();
+                try (Connection conn = newConnection();
+                        PreparedStatement stmt = conn.prepareStatement(
+                                "select 'literal', SYSDATE from dual");
+                        ResultSet rset = stmt.executeQuery();) {
                     try {
                         Thread.sleep(_random.nextInt(_delay));
                     } catch(Exception e) {
@@ -603,10 +609,6 @@ public abstract class TestConnectionPool extends TestCase {
                     _failed = true;
                     _complete = true;
                     break;
-                } finally {
-                    try { if (rset != null) rset.close(); } catch(Exception e) { }
-                    try { if (stmt != null) stmt.close(); } catch(Exception e) { }
-                    try { if (conn != null) conn.close(); } catch(Exception e) { }
                 }
             }
             _complete = true;
@@ -706,34 +708,56 @@ public abstract class TestConnectionPool extends TestCase {
      * @throws Exception
      */
     protected void multipleThreads(final int holdTime,
+        final boolean expectError, final boolean loopOnce,
+        final long maxWaitMillis) throws Exception {
+        multipleThreads(holdTime, expectError, loopOnce, maxWaitMillis, 1, 2 * getMaxTotal(), 300);
+    }
+    
+    /**
+     * Launches a group of <numThreads> threads, each of which will attempt to obtain a connection
+     * from the pool, hold it for <holdTime> ms, and then return it to the pool.  If <loopOnce> is false,
+     * threads will continue this process indefinitely.  If <expectError> is true, exactly 1/2 of the
+     * threads are expected to either throw exceptions or fail to complete. If <expectError> is false,
+     * all threads are expected to complete successfully.  Threads are stopped after <duration> ms.
+     *
+     * @param holdTime time in ms that a thread holds a connection before returning it to the pool
+     * @param expectError whether or not an error is expected
+     * @param loopOnce whether threads should complete the borrow - hold - return cycle only once, or loop indefinitely
+     * @param maxWaitMillis passed in by client - has no impact on the test itself, but does get reported
+     * @param numThreads the number of threads
+     * @param duration duration in ms of test
+     *
+     * @throws Exception
+     */
+    protected void multipleThreads(final int holdTime,
             final boolean expectError, final boolean loopOnce,
-            final long maxWaitMillis) throws Exception {
+            final long maxWaitMillis, int numStatements, int numThreads, long duration) throws Exception {
                 long startTime = timeStamp();
-                final PoolTest[] pts = new PoolTest[2 * getMaxTotal()];
+                final PoolTest[] pts = new PoolTest[numThreads];
                 // Catch Exception so we can stop all threads if one fails
                 ThreadGroup threadGroup = new ThreadGroup("foo") {
                     @Override
                     public void uncaughtException(Thread t, Throwable e) {
-                        for (int i = 0; i < pts.length; i++) {
-                            pts[i].stop();
+                        for (PoolTest pt : pts) {
+                            pt.stop();
                         }
                     }
                 };
                 // Create all the threads
                 for (int i = 0; i < pts.length; i++) {
-                    pts[i] = new PoolTest(threadGroup, holdTime, expectError, loopOnce);
+                    pts[i] = new PoolTest(threadGroup, holdTime, expectError, loopOnce, numStatements);
                 }
                 // Start all the threads
-                for (int i = 0; i < pts.length; i++) {
-                    pts[i].start();
+                for (PoolTest pt : pts) {
+                    pt.start();
                 }
 
                 // Give all threads a chance to start and succeed
-                Thread.sleep(300L);
+                Thread.sleep(duration);
 
                 // Stop threads
-                for (int i = 0; i < pts.length; i++) {
-                    pts[i].stop();
+                for (PoolTest pt : pts) {
+                    pt.stop();
                 }
 
                 /*
@@ -745,8 +769,7 @@ public abstract class TestConnectionPool extends TestCase {
                 int failed=0;
                 int didNotRun = 0;
                 int loops=0;
-                for (int i = 0; i < pts.length; i++) {
-                    final PoolTest poolTest = pts[i];
+                for (final PoolTest poolTest : pts) {
                     poolTest.thread.join();
                     loops += poolTest.loops;
                     final String state = poolTest.state;
@@ -817,6 +840,8 @@ public abstract class TestConnectionPool extends TestCase {
          * The number of milliseconds to hold onto a database connection
          */
         private final int connHoldTime;
+        
+        private final int numStatements;
 
         private volatile boolean isRun;
 
@@ -825,6 +850,8 @@ public abstract class TestConnectionPool extends TestCase {
         private final Thread thread;
 
         private Throwable thrown;
+        
+        private final Random random = new Random();
 
         // Debug for DBCP-318
         private final long created; // When object was created
@@ -841,10 +868,14 @@ public abstract class TestConnectionPool extends TestCase {
         private final boolean loopOnce; // If true, don't repeat loop
 
         public PoolTest(ThreadGroup threadGroup, int connHoldTime, boolean isStopOnException) {
-            this(threadGroup, connHoldTime, isStopOnException, false);
+            this(threadGroup, connHoldTime, isStopOnException, false, 1);
+        }
+        
+        public PoolTest(ThreadGroup threadGroup, int connHoldTime, boolean isStopOnException, int numStatements) {
+            this(threadGroup, connHoldTime, isStopOnException, false, numStatements);
         }
 
-        private PoolTest(ThreadGroup threadGroup, int connHoldTime, boolean isStopOnException, boolean once) {
+        private PoolTest(ThreadGroup threadGroup, int connHoldTime, boolean isStopOnException, boolean once, int numStatements) {
             this.loopOnce = once;
             this.connHoldTime = connHoldTime;
             stopOnException = isStopOnException;
@@ -854,6 +885,7 @@ public abstract class TestConnectionPool extends TestCase {
                 new Thread(threadGroup, this, "Thread+" + currentThreadCount++);
             thread.setDaemon(false);
             created = timeStamp();
+            this.numStatements = numStatements;
         }
 
         public void start(){
@@ -873,8 +905,9 @@ public abstract class TestConnectionPool extends TestCase {
                     connected = timeStamp();
                     state = "Using Connection";
                     assertNotNull(conn);
+                    final String sql = numStatements == 1 ? "select * from dual" : "select count " + random.nextInt(numStatements - 1);
                     PreparedStatement stmt =
-                        conn.prepareStatement("select * from dual");
+                        conn.prepareStatement(sql);
                     assertNotNull(stmt);
                     ResultSet rset = stmt.executeQuery();
                     assertNotNull(rset);
