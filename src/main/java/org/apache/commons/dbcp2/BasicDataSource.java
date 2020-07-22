@@ -20,20 +20,23 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.lang.management.ManagementFactory;
 import java.nio.charset.StandardCharsets;
-import java.util.Properties;
-import java.util.Collection;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.Collections;
-import java.util.logging.Logger;
+import java.security.AccessController;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
 import java.sql.Connection;
 import java.sql.Driver;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Properties;
+import java.util.logging.Logger;
 
 import javax.management.InstanceAlreadyExistsException;
+import javax.management.JMException;
 import javax.management.MBeanRegistration;
 import javax.management.MBeanRegistrationException;
 import javax.management.MBeanServer;
@@ -45,13 +48,11 @@ import javax.sql.DataSource;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.pool2.PooledObject;
-import org.apache.commons.pool2.UsageTracking;
 import org.apache.commons.pool2.impl.AbandonedConfig;
 import org.apache.commons.pool2.impl.BaseObjectPoolConfig;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPoolConfig;
 import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
-
 
 /**
  * <p>Basic implementation of <code>javax.sql.DataSource</code> that is
@@ -63,16 +64,40 @@ import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
  * @author Craig R. McClanahan
  * @author Dirk Verbeeck
  * @version $Revision$ $Date$
+ * @since 2.0
  */
-public class BasicDataSource
-        implements DataSource, BasicDataSourceMXBean, MBeanRegistration {
+public class BasicDataSource implements DataSource, BasicDataSourceMXBean, MBeanRegistration {
 
-    private static final Log log =
-            LogFactory.getLog(BasicDataSource.class);
+    private static final Log log = LogFactory.getLog(BasicDataSource.class);
 
     static {
         // Attempt to prevent deadlocks - see DBCP - 272
         DriverManager.getDrivers();
+        try {
+            // Load classes now to prevent AccessControlExceptions later
+            // A number of classes are loaded when getConnection() is called
+            // but the following classes are not loaded and therefore require
+            // explicit loading.
+            if (Utils.IS_SECURITY_ENABLED) {
+                ClassLoader loader = BasicDataSource.class.getClassLoader();
+                String dbcpPackageName = BasicDataSource.class.getPackage().getName();
+                loader.loadClass(dbcpPackageName + ".BasicDataSource$PaGetConnection");
+                loader.loadClass(dbcpPackageName + ".DelegatingCallableStatement");
+                loader.loadClass(dbcpPackageName + ".DelegatingDatabaseMetaData");
+                loader.loadClass(dbcpPackageName + ".DelegatingPreparedStatement");
+                loader.loadClass(dbcpPackageName + ".DelegatingResultSet");
+                loader.loadClass(dbcpPackageName + ".PoolableCallableStatement");
+                loader.loadClass(dbcpPackageName + ".PoolablePreparedStatement");
+                loader.loadClass(dbcpPackageName + ".PoolingConnection$StatementType");
+                loader.loadClass(dbcpPackageName + ".PStmtKey");
+
+                String poolPackageName = PooledObject.class.getPackage().getName();
+                loader.loadClass(poolPackageName + ".impl.LinkedBlockingDeque$Node");
+                loader.loadClass(poolPackageName + ".impl.GenericKeyedObjectPool$ObjectDeque");
+            }
+        } catch (ClassNotFoundException cnfe) {
+            throw new IllegalStateException("Unable to pre-load classes", cnfe);
+        }
     }
 
     // ------------------------------------------------------------- Properties
@@ -80,7 +105,7 @@ public class BasicDataSource
     /**
      * The default auto-commit state of connections created by this pool.
      */
-    private volatile boolean defaultAutoCommit = true;
+    private volatile Boolean defaultAutoCommit = null;
 
     /**
      * Returns the default auto-commit property.
@@ -88,8 +113,8 @@ public class BasicDataSource
      * @return true if default auto-commit is enabled
      */
     @Override
-    public boolean getDefaultAutoCommit() {
-        return this.defaultAutoCommit;
+    public Boolean getDefaultAutoCommit() {
+        return defaultAutoCommit;
     }
 
     /**
@@ -103,9 +128,8 @@ public class BasicDataSource
      *
      * @param defaultAutoCommit default auto-commit value
      */
-    public void setDefaultAutoCommit(boolean defaultAutoCommit) {
+    public void setDefaultAutoCommit(Boolean defaultAutoCommit) {
         this.defaultAutoCommit = defaultAutoCommit;
-        this.restartNeeded = true;
     }
 
 
@@ -120,15 +144,7 @@ public class BasicDataSource
      * @return true if connections are readOnly by default
      */
     @Override
-    public boolean getDefaultReadOnly() {
-        Boolean val = defaultReadOnly;
-        if (val != null) {
-            return val.booleanValue();
-        }
-        return false;
-    }
-
-    protected Boolean getDefaultReadOnlyBoolean() {
+    public Boolean getDefaultReadOnly() {
         return defaultReadOnly;
     }
 
@@ -142,9 +158,8 @@ public class BasicDataSource
      *
      * @param defaultReadOnly default read-only value
      */
-    public void setDefaultReadOnly(boolean defaultReadOnly) {
-        this.defaultReadOnly = defaultReadOnly ? Boolean.TRUE : Boolean.FALSE;
-        this.restartNeeded = true;
+    public void setDefaultReadOnly(Boolean defaultReadOnly) {
+        this.defaultReadOnly = defaultReadOnly;
     }
 
     /**
@@ -179,7 +194,28 @@ public class BasicDataSource
      */
     public void setDefaultTransactionIsolation(int defaultTransactionIsolation) {
         this.defaultTransactionIsolation = defaultTransactionIsolation;
-        this.restartNeeded = true;
+    }
+
+
+    private Integer defaultQueryTimeout = null;
+
+    /**
+     * Obtain the default query timeout that will be used for {@link java.sql.Statement Statement}s
+     * created from this connection. <code>null</code> means that the driver
+     * default will be used.
+     */
+    public Integer getDefaultQueryTimeout() {
+        return defaultQueryTimeout;
+    }
+
+
+    /**
+     * Set the default query timeout that will be used for {@link java.sql.Statement Statement}s
+     * created from this connection. <code>null</code> means that the driver
+     * default will be used.
+     */
+    public void setDefaultQueryTimeout(Integer defaultQueryTimeout) {
+        this.defaultQueryTimeout = defaultQueryTimeout;
     }
 
 
@@ -209,13 +245,12 @@ public class BasicDataSource
      * @param defaultCatalog the default catalog
      */
     public void setDefaultCatalog(String defaultCatalog) {
-        if ((defaultCatalog != null) && (defaultCatalog.trim().length() > 0)) {
+        if (defaultCatalog != null && defaultCatalog.trim().length() > 0) {
             this.defaultCatalog = defaultCatalog;
         }
         else {
             this.defaultCatalog = null;
         }
-        this.restartNeeded = true;
     }
 
     /**
@@ -306,13 +341,12 @@ public class BasicDataSource
      * @param driverClassName the class name of the jdbc driver
      */
     public synchronized void setDriverClassName(String driverClassName) {
-        if ((driverClassName != null) && (driverClassName.trim().length() > 0)) {
+        if (driverClassName != null && driverClassName.trim().length() > 0) {
             this.driverClassName = driverClassName;
         }
         else {
             this.driverClassName = null;
         }
-        this.restartNeeded = true;
     }
 
     /**
@@ -350,7 +384,6 @@ public class BasicDataSource
     public synchronized void setDriverClassLoader(
             ClassLoader driverClassLoader) {
         this.driverClassLoader = driverClassLoader;
-        this.restartNeeded = true;
     }
 
     /**
@@ -359,7 +392,7 @@ public class BasicDataSource
      * means that the pool behaves as a FIFO queue - connections are taken from
      * the idle instance pool in the order that they are returned to the pool.
      */
-    private boolean lifo = GenericObjectPoolConfig.DEFAULT_LIFO;
+    private boolean lifo = BaseObjectPoolConfig.DEFAULT_LIFO;
 
     /**
      * Returns the LIFO property.
@@ -499,8 +532,6 @@ public class BasicDataSource
     /**
      * The initial number of connections that are created when the pool
      * is started.
-     *
-     * @since 1.2
      */
     private int initialSize = 0;
 
@@ -527,7 +558,6 @@ public class BasicDataSource
      */
     public synchronized void setInitialSize(int initialSize) {
         this.initialSize = initialSize;
-        this.restartNeeded = true;
     }
 
     /**
@@ -536,14 +566,12 @@ public class BasicDataSource
      * throwing an exception, or <= 0 to wait indefinitely.
      */
     private long maxWaitMillis =
-            GenericObjectPoolConfig.DEFAULT_MAX_WAIT_MILLIS;
+            BaseObjectPoolConfig.DEFAULT_MAX_WAIT_MILLIS;
 
     /**
-     * <p>Returns the maximum number of milliseconds that the pool will wait
-     * for a connection to be returned before throwing an exception.
-     * </p>
-     * <p>A value less than or equal to zero means the pool is set to wait
-     * indefinitely.</p>
+     * Returns the maximum number of milliseconds that the pool will wait
+     * for a connection to be returned before throwing an exception. A value
+     * less than or equal to zero means the pool is set to wait indefinitely.
      *
      * @return the maxWaitMillis property value
      */
@@ -553,10 +581,8 @@ public class BasicDataSource
     }
 
     /**
-     * <p>Sets the MaxWaitMillis property.
-     * </p>
-     * <p>Use -1 to make the pool wait indefinitely.
-     * </p>
+     * Sets the MaxWaitMillis property. Use -1 to make the pool wait
+     * indefinitely.
      *
      * @param maxWaitMillis the new value for MaxWaitMillis
      * @see #getMaxWaitMillis()
@@ -596,7 +622,6 @@ public class BasicDataSource
      */
     public synchronized void setPoolPreparedStatements(boolean poolingStatements) {
         this.poolPreparedStatements = poolingStatements;
-        this.restartNeeded = true;
     }
 
     /**
@@ -636,7 +661,40 @@ public class BasicDataSource
      */
     public synchronized void setMaxOpenPreparedStatements(int maxOpenStatements) {
         this.maxOpenPreparedStatements = maxOpenStatements;
-        this.restartNeeded = true;
+    }
+
+    /**
+     * The indication of whether objects will be validated as soon as they have
+     * been created by the pool. If the object fails to validate, the borrow
+     * operation that triggered the creation will fail.
+     */
+    private boolean testOnCreate = false;
+
+    /**
+     * Returns the {@link #testOnCreate} property.
+     *
+     * @return true if objects are validated immediately after they are created
+     * by the pool
+     *
+     * @see #testOnCreate
+     */
+    @Override
+    public synchronized boolean getTestOnCreate() {
+        return this.testOnCreate;
+    }
+
+    /**
+     * Sets the {@link #testOnCreate} property. This property determines
+     * whether or not the pool will validate objects immediately after they are
+     * created by the pool
+     *
+     * @param testOnCreate new value for testOnCreate property
+     */
+    public synchronized void setTestOnCreate(boolean testOnCreate) {
+        this.testOnCreate = testOnCreate;
+        if (connectionPool != null) {
+            connectionPool.setTestOnCreate(testOnCreate);
+        }
     }
 
     /**
@@ -662,8 +720,7 @@ public class BasicDataSource
     /**
      * Sets the {@link #testOnBorrow} property. This property determines
      * whether or not the pool will validate objects before they are borrowed
-     * from the pool. For a <code>true</code> value to have any effect, the
-     * <code>validationQuery</code> property must be set to a non-null string.
+     * from the pool.
      *
      * @param testOnBorrow new value for testOnBorrow property
      */
@@ -694,8 +751,7 @@ public class BasicDataSource
     /**
      * Sets the <code>testOnReturn</code> property. This property determines
      * whether or not the pool will validate objects before they are returned
-     * to the pool. For a <code>true</code> value to have any effect, the
-     * <code>validationQuery</code> property must be set to a non-null string.
+     * to the pool.
      *
      * @param testOnReturn new value for testOnReturn property
      */
@@ -712,7 +768,7 @@ public class BasicDataSource
      * be run.
      */
     private long timeBetweenEvictionRunsMillis =
-        GenericObjectPoolConfig.DEFAULT_TIME_BETWEEN_EVICTION_RUNS_MILLIS;
+        BaseObjectPoolConfig.DEFAULT_TIME_BETWEEN_EVICTION_RUNS_MILLIS;
 
     /**
      * Returns the value of the {@link #timeBetweenEvictionRunsMillis}
@@ -744,7 +800,7 @@ public class BasicDataSource
      * evictor thread (if any).
      */
     private int numTestsPerEvictionRun =
-        GenericObjectPoolConfig.DEFAULT_NUM_TESTS_PER_EVICTION_RUN;
+        BaseObjectPoolConfig.DEFAULT_NUM_TESTS_PER_EVICTION_RUN;
 
     /**
      * Returns the value of the {@link #numTestsPerEvictionRun} property.
@@ -777,7 +833,7 @@ public class BasicDataSource
      * is eligible for eviction by the idle object evictor (if any).
      */
     private long minEvictableIdleTimeMillis =
-        GenericObjectPoolConfig.DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS;
+        BaseObjectPoolConfig.DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS;
 
     /**
      * Returns the {@link #minEvictableIdleTimeMillis} property.
@@ -812,7 +868,7 @@ public class BasicDataSource
      * parameter.  See {@link #getSoftMinEvictableIdleTimeMillis()}.
      */
     private long softMinEvictableIdleTimeMillis =
-        GenericObjectPoolConfig.DEFAULT_SOFT_MIN_EVICTABLE_IDLE_TIME_MILLIS;
+        BaseObjectPoolConfig.DEFAULT_SOFT_MIN_EVICTABLE_IDLE_TIME_MILLIS;
 
     /**
      * Sets the minimum amount of time a connection may sit idle in the pool
@@ -822,7 +878,6 @@ public class BasicDataSource
      * @param softMinEvictableIdleTimeMillis minimum amount of time a
      * connection may sit idle in the pool before it is eligible for eviction,
      * assuming there are minIdle idle connections in the pool.
-     * @since 1.4.1
      * @see #getSoftMinEvictableIdleTimeMillis
      */
     public synchronized void setSoftMinEvictableIdleTimeMillis(long softMinEvictableIdleTimeMillis) {
@@ -850,7 +905,6 @@ public class BasicDataSource
      * @return minimum amount of time a connection may sit idle in the pool before
      * it is eligible for eviction, assuming there are minIdle idle connections
      * in the pool
-     * @since 1.4.1
      */
     @Override
     public synchronized long getSoftMinEvictableIdleTimeMillis() {
@@ -862,8 +916,6 @@ public class BasicDataSource
 
     /**
      * Gets the EvictionPolicy implementation in use with this connection pool.
-     *
-     * @since 2.0
      */
     public synchronized String getEvictionPolicyClassName() {
         return evictionPolicyClassName;
@@ -874,8 +926,6 @@ public class BasicDataSource
      *
      * @param evictionPolicyClassName   The fully qualified class name of the
      *                                  EvictionPolicy implementation
-     *
-     * @since 2.0
      */
     public synchronized void setEvictionPolicyClassName(
             String evictionPolicyClassName) {
@@ -906,9 +956,7 @@ public class BasicDataSource
 
     /**
      * Sets the <code>testWhileIdle</code> property. This property determines
-     * whether or not the idle object evictor will validate connections.  For a
-     * <code>true</code> value to have any effect, the
-     * <code>validationQuery</code> property must be set to a non-null string.
+     * whether or not the idle object evictor will validate connections.
      *
      * @param testWhileIdle new value for testWhileIdle property
      */
@@ -929,9 +977,8 @@ public class BasicDataSource
     public synchronized int getNumActive() {
         if (connectionPool != null) {
             return connectionPool.getNumActive();
-        } else {
-            return 0;
         }
+        return 0;
     }
 
 
@@ -945,9 +992,8 @@ public class BasicDataSource
     public synchronized int getNumIdle() {
         if (connectionPool != null) {
             return connectionPool.getNumIdle();
-        } else {
-            return 0;
         }
+        return 0;
     }
 
     /**
@@ -978,7 +1024,6 @@ public class BasicDataSource
      */
     public void setPassword(String password) {
         this.password = password;
-        this.restartNeeded = true;
     }
 
     /**
@@ -1010,7 +1055,6 @@ public class BasicDataSource
      */
     public synchronized void setUrl(String url) {
         this.url = url;
-        this.restartNeeded = true;
     }
 
     /**
@@ -1042,14 +1086,14 @@ public class BasicDataSource
      */
     public void setUsername(String username) {
         this.username = username;
-        this.restartNeeded = true;
     }
 
     /**
      * The SQL query that will be used to validate connections from this pool
      * before returning them to the caller.  If specified, this query
      * <strong>MUST</strong> be an SQL SELECT statement that returns at least
-     * one row.
+     * one row. If not specified, {@link Connection#isValid(int)} will be used
+     * to validate connections.
      */
     private volatile String validationQuery = null;
 
@@ -1076,18 +1120,15 @@ public class BasicDataSource
      * @param validationQuery the new value for the validation query
      */
     public void setValidationQuery(String validationQuery) {
-        if ((validationQuery != null) && (validationQuery.trim().length() > 0)) {
+        if (validationQuery != null && validationQuery.trim().length() > 0) {
             this.validationQuery = validationQuery;
         } else {
             this.validationQuery = null;
         }
-        this.restartNeeded = true;
     }
 
     /**
      * Timeout in seconds before connection validation queries fail.
-     *
-     * @since 1.3
      */
     private volatile int validationQueryTimeout = -1;
 
@@ -1095,7 +1136,6 @@ public class BasicDataSource
      * Returns the validation query timeout.
      *
      * @return the timeout in seconds before connection validation queries fail.
-     * @since 1.3
      */
     @Override
     public int getValidationQueryTimeout() {
@@ -1114,11 +1154,9 @@ public class BasicDataSource
      * setLoginTimeout, getLoginTimeout, getLogWriter.</code></p>
      *
      * @param timeout new validation query timeout value in seconds
-     * @since 1.3
      */
     public void setValidationQueryTimeout(int timeout) {
         this.validationQueryTimeout = timeout;
-        restartNeeded = true;
     }
 
     /**
@@ -1128,8 +1166,6 @@ public class BasicDataSource
      * NLS_SORT=XCYECH in an Oracle Database only once after connection
      * creation.
      * </p>
-     *
-     * @since 1.3
      */
     private volatile List<String> connectionInitSqls;
 
@@ -1139,7 +1175,6 @@ public class BasicDataSource
      * statements configured.
      *
      * @return initialization SQL statements
-     * @since 1.3
      */
     public List<String> getConnectionInitSqls() {
         List<String> result = connectionInitSqls;
@@ -1172,11 +1207,9 @@ public class BasicDataSource
      * on connection creation
      */
     public void setConnectionInitSqls(Collection<String> connectionInitSqls) {
-        if ((connectionInitSqls != null) && (connectionInitSqls.size() > 0)) {
+        if (connectionInitSqls != null && connectionInitSqls.size() > 0) {
             ArrayList<String> newVal = null;
-            for (Iterator<String> iterator = connectionInitSqls.iterator();
-            iterator.hasNext();) {
-            String s = iterator.next();
+            for (String s : connectionInitSqls) {
             if (s != null && s.trim().length() > 0) {
                     if (newVal == null) {
                         newVal = new ArrayList<>();
@@ -1188,7 +1221,6 @@ public class BasicDataSource
         } else {
             this.connectionInitSqls = null;
         }
-        this.restartNeeded = true;
     }
 
 
@@ -1222,7 +1254,6 @@ public class BasicDataSource
      */
     public synchronized void setAccessToUnderlyingConnectionAllowed(boolean allow) {
         this.accessToUnderlyingConnectionAllowed = allow;
-        this.restartNeeded = true;
     }
 
 
@@ -1272,27 +1303,53 @@ public class BasicDataSource
     }
 
 
-    // ----------------------------------------------------- Instance Variables
-
-    // TODO: review & make isRestartNeeded() public, restartNeeded protected
+    private boolean enableAutoCommitOnReturn = true;
 
     /**
-     * A property setter has been invoked that will require the connection
-     * pool to be re-initialized. Currently, restart is not triggered, so
-     * this property has no effect.
+     * Returns the value of the flag that controls whether or not connections
+     * being returned to the pool will checked and configured with
+     * {@link Connection#setAutoCommit(boolean) Connection.setAutoCommit(true)}
+     * if the auto commit setting is <code>false</false> when the connection
+     * is returned. It is <code>true</code> by default.
      */
-    private volatile boolean restartNeeded = false;
-
-    /**
-     * Returns whether or not a restart is needed.
-     *
-     * Note: restart is not currently triggered by property changes.
-     *
-     * @return true if a restart is needed
-     */
-    private boolean isRestartNeeded() {
-        return restartNeeded;
+    public boolean getEnableAutoCommitOnReturn() {
+        return enableAutoCommitOnReturn;
     }
+
+    /**
+     * Sets the value of the flag that controls whether or not connections
+     * being returned to the pool will checked and configured with
+     * {@link Connection#setAutoCommit(boolean) Connection.setAutoCommit(true)}
+     * if the auto commit setting is <code>false</false> when the connection
+     * is returned. It is <code>true</code> by default.
+     */
+    public void setEnableAutoCommitOnReturn(boolean enableAutoCommitOnReturn) {
+        this.enableAutoCommitOnReturn = enableAutoCommitOnReturn;
+    }
+
+
+    private boolean rollbackOnReturn = true;
+
+    /**
+     * Gets the current value of the flag that controls if a connection will be
+     * rolled back when it is returned to the pool if auto commit is not enabled
+     * and the connection is not read only.
+     */
+    public boolean getRollbackOnReturn() {
+        return rollbackOnReturn;
+    }
+
+    /**
+     * Sets the flag that controls if a connection will be rolled back when it
+     * is returned to the pool if auto commit is not enabled and the connection
+     * is not read only.
+     */
+    public void setRollbackOnReturn(boolean rollbackOnReturn) {
+        this.rollbackOnReturn = rollbackOnReturn;
+    }
+
+
+    // ----------------------------------------------------- Instance Variables
 
     /**
      * The object pool that internally manages our connections.
@@ -1341,6 +1398,18 @@ public class BasicDataSource
      */
     @Override
     public Connection getConnection() throws SQLException {
+        if (Utils.IS_SECURITY_ENABLED) {
+            PrivilegedExceptionAction<Connection> action = new PaGetConnection();
+            try {
+                return AccessController.doPrivileged(action);
+            } catch (PrivilegedActionException e) {
+                Throwable cause = e.getCause();
+                if (cause instanceof SQLException) {
+                    throw (SQLException) cause;
+                }
+                throw new SQLException(e);
+            }
+        }
         return createDataSource().getConnection();
     }
 
@@ -1361,7 +1430,6 @@ public class BasicDataSource
         // This method isn't supported by the PoolingDataSource returned by
         // the createDataSource
         throw new UnsupportedOperationException("Not supported by BasicDataSource");
-        // return createDataSource().getConnection(username, password);
     }
 
 
@@ -1383,7 +1451,6 @@ public class BasicDataSource
         // This method isn't supported by the PoolingDataSource returned by
         // the createDataSource
         throw new UnsupportedOperationException("Not supported by BasicDataSource");
-        //return createDataSource().getLoginTimeout();
     }
 
 
@@ -1421,7 +1488,6 @@ public class BasicDataSource
         // This method isn't supported by the PoolingDataSource returned by
         // the createDataSource
         throw new UnsupportedOperationException("Not supported by BasicDataSource");
-        //createDataSource().setLoginTimeout(loginTimeout);
     }
 
 
@@ -1491,7 +1557,6 @@ public class BasicDataSource
         }
         abandonedConfig.setRemoveAbandonedOnMaintenance(
                 removeAbandonedOnMaintenance);
-        this.restartNeeded = true;
     }
 
     /**
@@ -1540,7 +1605,6 @@ public class BasicDataSource
             abandonedConfig = new AbandonedConfig();
         }
         abandonedConfig.setRemoveAbandonedOnBorrow(removeAbandonedOnBorrow);
-        this.restartNeeded = true;
     }
 
     /**
@@ -1555,7 +1619,7 @@ public class BasicDataSource
      * <li>{@link #getRemoveAbandonedOnBorrow()} or
      *     {@link #getRemoveAbandonedOnMaintenance()} = true</li>
      * <li>{@link #getNumIdle() numIdle} &lt; 2</li>
-     * <li>{@link #getNumActive() numActive} &gt; {@link #getMaxTotal() maxActive} - 3</li>
+     * <li>{@link #getNumActive() numActive} &gt; {@link #getMaxTotal() maxTotal} - 3</li>
      * </ul></code></p>
      *
      * <p>The default value is 300 seconds.</p>
@@ -1586,7 +1650,6 @@ public class BasicDataSource
             abandonedConfig = new AbandonedConfig();
         }
         abandonedConfig.setRemoveAbandonedTimeout(removeAbandonedTimeout);
-        this.restartNeeded = true;
     }
 
     /**
@@ -1615,7 +1678,6 @@ public class BasicDataSource
             abandonedConfig = new AbandonedConfig();
         }
         abandonedConfig.setLogAbandoned(logAbandoned);
-        this.restartNeeded = true;
     }
 
     /**
@@ -1640,11 +1702,10 @@ public class BasicDataSource
             abandonedConfig = new AbandonedConfig();
         }
         abandonedConfig.setLogWriter(logWriter);
-        this.restartNeeded = true;
     }
 
     /**
-     * If the connection pool implements {@link UsageTracking}, should the
+     * If the connection pool implements {@link org.apache.commons.pool2.UsageTracking UsageTracking}, should the
      * connection pool record a stack trace every time a method is called on a
      * pooled connection and retain the most recent stack trace to aid debugging
      * of abandoned connections?
@@ -1660,7 +1721,7 @@ public class BasicDataSource
     }
 
     /**
-     * If the connection pool implements {@link UsageTracking}, configure
+     * If the connection pool implements {@link org.apache.commons.pool2.UsageTracking UsageTracking}, configure
      * whether the connection pool should record a stack trace every time a
      * method is called on a pooled connection and retain the most recent stack
      * trace to aid debugging of abandoned connections.
@@ -1674,7 +1735,6 @@ public class BasicDataSource
             abandonedConfig = new AbandonedConfig();
         }
         abandonedConfig.setUseUsageTracking(usageTracking);
-        this.restartNeeded = true;
     }
 
     // --------------------------------------------------------- Public Methods
@@ -1691,7 +1751,6 @@ public class BasicDataSource
      */
     public void addConnectionProperty(String name, String value) {
         connectionProperties.put(name, value);
-        this.restartNeeded = true;
     }
 
     /**
@@ -1702,7 +1761,6 @@ public class BasicDataSource
      */
     public void removeConnectionProperty(String name) {
         connectionProperties.remove(name);
-        this.restartNeeded = true;
     }
 
     /**
@@ -1717,12 +1775,13 @@ public class BasicDataSource
      * create new connections
      */
     public void setConnectionProperties(String connectionProperties) {
-        if (connectionProperties == null) throw new NullPointerException("connectionProperties is null");
+        if (connectionProperties == null) {
+            throw new NullPointerException("connectionProperties is null");
+        }
 
         String[] entries = connectionProperties.split(";");
         Properties properties = new Properties();
-        for (int i = 0; i < entries.length; i++) {
-            String entry = entries[i];
+        for (String entry : entries) {
             if (entry.length() > 0) {
                 int index = entry.indexOf('=');
                 if (index > 0) {
@@ -1736,7 +1795,6 @@ public class BasicDataSource
             }
         }
         this.connectionProperties = properties;
-        this.restartNeeded = true;
     }
 
     private boolean closed;
@@ -1758,6 +1816,16 @@ public class BasicDataSource
      * @throws SQLException if an error occurs closing idle connections
      */
     public synchronized void close() throws SQLException {
+        if (registeredJmxName != null) {
+            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+            try {
+                mbs.unregisterMBean(registeredJmxName);
+            } catch (JMException e) {
+                log.warn("Failed to unregister the JMX name: " + registeredJmxName, e);
+            } finally {
+                registeredJmxName = null;
+            }
+        }
         closed = true;
         GenericObjectPool<?> oldpool = connectionPool;
         connectionPool = null;
@@ -1782,7 +1850,6 @@ public class BasicDataSource
         return closed;
     }
 
-    /* JDBC_4_ANT_KEY_BEGIN */
     @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
         return false;
@@ -1792,7 +1859,6 @@ public class BasicDataSource
     public <T> T unwrap(Class<T> iface) throws SQLException {
         throw new SQLException("BasicDataSource is not a wrapper.");
     }
-    /* JDBC_4_ANT_KEY_END */
 
     @Override
     public Logger getParentLogger() throws SQLFeatureNotSupportedException {
@@ -1818,11 +1884,11 @@ public class BasicDataSource
         // This is double-checked locking. This is safe since dataSource is
         // volatile and the code is targeted at Java 5 onwards.
         if (dataSource != null) {
-            return (dataSource);
+            return dataSource;
         }
         synchronized (this) {
             if (dataSource != null) {
-                return (dataSource);
+                return dataSource;
             }
 
             jmxRegister();
@@ -1942,7 +2008,7 @@ public class BasicDataSource
                 } else {
                     // Usage of DriverManager is not possible, as it does not
                     // respect the ContextClassLoader
-                	// N.B. This cast may cause ClassCastException which is handled below
+                    // N.B. This cast may cause ClassCastException which is handled below
                     driverToUse = (Driver) driverFromCCL.newInstance();
                     if (!driverToUse.acceptsURL(url)) {
                         throw new SQLException("No suitable driver", "08001");
@@ -1956,13 +2022,6 @@ public class BasicDataSource
                 t.printStackTrace(logWriter);
                 throw new SQLException(message, t);
             }
-        }
-
-        // Can't test without a validationQuery
-        if (validationQuery == null) {
-            setTestOnBorrow(false);
-            setTestOnReturn(false);
-            setTestWhileIdle(false);
         }
 
         // Set up the driver connection factory we will use
@@ -2012,6 +2071,7 @@ public class BasicDataSource
         gop.setMaxIdle(maxIdle);
         gop.setMinIdle(minIdle);
         gop.setMaxWaitMillis(maxWaitMillis);
+        gop.setTestOnCreate(testOnCreate);
         gop.setTestOnBorrow(testOnBorrow);
         gop.setTestOnReturn(testOnReturn);
         gop.setNumTestsPerEvictionRun(numTestsPerEvictionRun);
@@ -2034,7 +2094,7 @@ public class BasicDataSource
                 oldpool.close();
             }
         } catch(Exception e) {
-            // Do not propagate
+            /* Ignore */
         }
     }
 
@@ -2043,8 +2103,7 @@ public class BasicDataSource
      */
     protected void startPoolMaintenance() {
         if (connectionPool != null && timeBetweenEvictionRunsMillis > 0) {
-            connectionPool.setTimeBetweenEvictionRunsMillis(
-                    timeBetweenEvictionRunsMillis);
+            connectionPool.setTimeBetweenEvictionRunsMillis(timeBetweenEvictionRunsMillis);
         }
     }
 
@@ -2075,17 +2134,17 @@ public class BasicDataSource
             connectionFactory.setValidationQuery(validationQuery);
             connectionFactory.setValidationQueryTimeout(validationQueryTimeout);
             connectionFactory.setConnectionInitSql(connectionInitSqls);
-            if (defaultReadOnly != null) {
-                connectionFactory.setDefaultReadOnly(defaultReadOnly.booleanValue());
-            }
+            connectionFactory.setDefaultReadOnly(defaultReadOnly);
             connectionFactory.setDefaultAutoCommit(defaultAutoCommit);
             connectionFactory.setDefaultTransactionIsolation(defaultTransactionIsolation);
             connectionFactory.setDefaultCatalog(defaultCatalog);
             connectionFactory.setCacheState(cacheState);
             connectionFactory.setPoolStatements(poolPreparedStatements);
-            connectionFactory.setMaxOpenPrepatedStatements(
-                    maxOpenPreparedStatements);
+            connectionFactory.setMaxOpenPrepatedStatements(maxOpenPreparedStatements);
             connectionFactory.setMaxConnLifetimeMillis(maxConnLifetimeMillis);
+            connectionFactory.setRollbackOnReturn(getRollbackOnReturn());
+            connectionFactory.setEnableAutoCommitOnReturn(getEnableAutoCommitOnReturn());
+            connectionFactory.setDefaultQueryTimeout(getDefaultQueryTimeout());
             validateConnectionFactory(connectionFactory);
         } catch (RuntimeException e) {
             throw e;
@@ -2189,12 +2248,23 @@ public class BasicDataSource
             return;
         }
         StringBuilder base = new StringBuilder(registeredJmxName.toString());
-        base.append(",pool=");
+        base.append(Constants.JMX_CONNECTION_POOL_BASE_EXT);
         config.setJmxNameBase(base.toString());
-        config.setJmxNamePrefix("connections");
+        config.setJmxNamePrefix(Constants.JMX_CONNECTION_POOL_PREFIX);
     }
 
     protected ObjectName getRegisteredJmxName() {
         return registeredJmxName;
+    }
+
+    /**
+     * @since 2.0
+     */
+    private class PaGetConnection implements PrivilegedExceptionAction<Connection> {
+
+        @Override
+        public Connection run() throws SQLException {
+            return createDataSource().getConnection();
+        }
     }
 }

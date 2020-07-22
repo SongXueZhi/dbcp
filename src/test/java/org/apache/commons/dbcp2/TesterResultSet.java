@@ -5,9 +5,9 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -29,17 +29,16 @@ import java.sql.SQLWarning;
 import java.sql.Statement;
 import java.util.Calendar;
 import java.util.Map;
-/* JDBC_4_ANT_KEY_BEGIN */
 import java.io.InputStream;
 import java.io.Reader;
+import java.io.UnsupportedEncodingException;
 import java.sql.NClob;
 import java.sql.RowId;
 import java.sql.SQLXML;
-/* JDBC_4_ANT_KEY_END */
 
 /**
  * A dummy {@link ResultSet}, for testing purposes.
- * 
+ *
  * @author Rodney Waldhoff
  * @author Dirk Verbeeck
  * @version $Revision$ $Date$
@@ -54,19 +53,19 @@ public class TesterResultSet implements ResultSet {
         _data = data;
     }
 
-    public TesterResultSet(Statement stmt, Object[][] data, int type, int concurrency) {
+    public TesterResultSet(Statement stmt, int type, int concurrency) {
         _statement = stmt;
-        _data = data;
+        _data = null;
         _type = type;
         _concurrency = concurrency;
     }
-    
+
     protected int _type = ResultSet.TYPE_FORWARD_ONLY;
     protected int _concurrency = ResultSet.CONCUR_READ_ONLY;
 
     protected Object[][] _data = null;
     protected int _currentRow = -1;
-    
+
     protected Statement _statement = null;
     protected int _rowsLeft = 2;
     protected boolean _open = true;
@@ -92,12 +91,12 @@ public class TesterResultSet implements ResultSet {
         if (!_open) {
             return;
         }
-        
+
         // Not all result sets are generated from statements eg DatabaseMetaData
         if (_statement != null) {
             ((TesterStatement)_statement)._resultSet = null;
         }
-        
+
         _open = false;
     }
 
@@ -228,19 +227,19 @@ public class TesterResultSet implements ResultSet {
     @Override
     public byte getByte(String columnName) throws SQLException {
         checkOpen();
-        return (byte)(columnName.hashCode());
+        return (byte)columnName.hashCode();
     }
 
     @Override
     public short getShort(String columnName) throws SQLException {
         checkOpen();
-        return (short)(columnName.hashCode());
+        return (short)columnName.hashCode();
     }
 
     @Override
     public int getInt(String columnName) throws SQLException {
         checkOpen();
-        return (columnName.hashCode());
+        return columnName.hashCode();
     }
 
     @Override
@@ -272,7 +271,12 @@ public class TesterResultSet implements ResultSet {
     @Override
     public byte[] getBytes(String columnName) throws SQLException {
         checkOpen();
-        return columnName.getBytes();
+        try {
+            return columnName.getBytes("UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            // Impossible. JVMs are required to support UTF-8
+            return null;
+        }
     }
 
     @Override
@@ -911,7 +915,6 @@ public SQLWarning getWarnings() throws SQLException {
         throw new SQLException("Not implemented.");
     }
 
-/* JDBC_4_ANT_KEY_BEGIN */
 
     @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
@@ -1162,7 +1165,6 @@ public SQLWarning getWarnings() throws SQLException {
     public void updateNClob(String columnLabel, Reader reader) throws SQLException {
         throw new SQLException("Not implemented.");
     }
-/* JDBC_4_ANT_KEY_END */
 
     @Override
     public <T> T getObject(int columnIndex, Class<T> type) throws SQLException {

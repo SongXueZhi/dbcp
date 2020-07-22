@@ -26,11 +26,16 @@ import java.util.ResourceBundle;
 
 /**
  * Utility methods
+ * @since 2.0
  */
-public class Utils {
+public final class Utils {
 
     private static final ResourceBundle messages = ResourceBundle.getBundle(
             Utils.class.getPackage().getName() + ".LocalStrings");
+
+    public static final boolean IS_SECURITY_ENABLED =
+            System.getSecurityManager() != null;
+
 
     private Utils() {
         // not instantiable
@@ -98,9 +103,8 @@ public class Utils {
         String msg =  messages.getString(key);
         if (args == null || args.length == 0) {
             return msg;
-        } else {
-            MessageFormat mf = new MessageFormat(msg);
-            return mf.format(args, new StringBuffer(), null).toString();
         }
+        MessageFormat mf = new MessageFormat(msg);
+        return mf.format(args, new StringBuffer(), null).toString();
     }
 }

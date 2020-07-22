@@ -18,8 +18,8 @@
 package org.apache.commons.dbcp2.datasources;
 
 import java.io.OutputStreamWriter;
-import java.io.Serializable;
 import java.io.PrintWriter;
+import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -30,15 +30,13 @@ import java.util.logging.Logger;
 
 import javax.naming.Context;
 import javax.naming.InitialContext;
-import javax.naming.NamingException;
-import javax.naming.Reference;
-import javax.naming.StringRefAddr;
 import javax.naming.Referenceable;
 import javax.sql.ConnectionPoolDataSource;
 import javax.sql.DataSource;
 import javax.sql.PooledConnection;
 
-import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
+import org.apache.commons.pool2.impl.BaseObjectPoolConfig;
+import org.apache.commons.pool2.impl.GenericKeyedObjectPoolConfig;
 
 /**
  * <p>The base class for <code>SharedPoolDataSource</code> and
@@ -84,15 +82,19 @@ import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
  *
  * @author John D. McNally
  * @version $Revision$ $Date$
+ * @since 2.0
  */
 public abstract class InstanceKeyDataSource
         implements DataSource, Referenceable, Serializable {
-    private static final long serialVersionUID = -4243533936955098795L;
+
+    private static final long serialVersionUID = -6819270431752240878L;
+
     private static final String GET_CONNECTION_CALLED
             = "A Connection was already requested from this source, "
             + "further initialization is not allowed.";
     private static final String BAD_TRANSACTION_ISOLATION
         = "The requested TransactionIsolation level is invalid.";
+
     /**
     * Internal constant to indicate the level is not set.
     */
@@ -107,11 +109,6 @@ public abstract class InstanceKeyDataSource
     /** DataSource Name used to find the ConnectionPoolDataSource */
     private String dataSourceName = null;
 
-    // Default connection properties
-    private boolean defaultAutoCommit = false;
-    private int defaultTransactionIsolation = UNKNOWN_TRANSACTIONISOLATION;
-    private boolean defaultReadOnly = false;
-
     /** Description */
     private String description = null;
 
@@ -124,39 +121,56 @@ public abstract class InstanceKeyDataSource
     /** Log stream */
     private PrintWriter logWriter = null;
 
+    /** Instance key */
+    private String instanceKey = null;
+
     // Pool properties
-    private boolean _testOnBorrow =
-            GenericObjectPoolConfig.DEFAULT_TEST_ON_BORROW;
-    private boolean _testOnReturn =
-            GenericObjectPoolConfig.DEFAULT_TEST_ON_RETURN;
-    private int _timeBetweenEvictionRunsMillis = (int)
-            Math.min(Integer.MAX_VALUE,
-                     GenericObjectPoolConfig.DEFAULT_TIME_BETWEEN_EVICTION_RUNS_MILLIS);
-    private int _numTestsPerEvictionRun =
-            GenericObjectPoolConfig.DEFAULT_NUM_TESTS_PER_EVICTION_RUN;
-    private int _minEvictableIdleTimeMillis = (int)
-            Math.min(Integer.MAX_VALUE,
-                    GenericObjectPoolConfig.DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS);
-    private String evictionPolicyClassName =
-            GenericObjectPoolConfig.DEFAULT_EVICTION_POLICY_CLASS_NAME;
-    private boolean _testWhileIdle =
-            GenericObjectPoolConfig.DEFAULT_TEST_WHILE_IDLE;
+    private boolean defaultBlockWhenExhausted =
+            BaseObjectPoolConfig.DEFAULT_BLOCK_WHEN_EXHAUSTED;
+    private String defaultEvictionPolicyClassName =
+            BaseObjectPoolConfig.DEFAULT_EVICTION_POLICY_CLASS_NAME;
+    private boolean defaultLifo = BaseObjectPoolConfig.DEFAULT_LIFO;
+    private int defaultMaxIdle =
+            GenericKeyedObjectPoolConfig.DEFAULT_MAX_IDLE_PER_KEY;
+    private int defaultMaxTotal =
+            GenericKeyedObjectPoolConfig.DEFAULT_MAX_TOTAL;
+    private long defaultMaxWaitMillis =
+            BaseObjectPoolConfig.DEFAULT_MAX_WAIT_MILLIS;
+    private long defaultMinEvictableIdleTimeMillis =
+            BaseObjectPoolConfig.DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS;
+    private int defaultMinIdle =
+            GenericKeyedObjectPoolConfig.DEFAULT_MIN_IDLE_PER_KEY;
+    private int defaultNumTestsPerEvictionRun =
+            BaseObjectPoolConfig.DEFAULT_NUM_TESTS_PER_EVICTION_RUN;
+    private long defaultSoftMinEvictableIdleTimeMillis =
+            BaseObjectPoolConfig.DEFAULT_SOFT_MIN_EVICTABLE_IDLE_TIME_MILLIS;
+    private boolean defaultTestOnCreate =
+            BaseObjectPoolConfig.DEFAULT_TEST_ON_CREATE;
+    private boolean defaultTestOnBorrow =
+            BaseObjectPoolConfig.DEFAULT_TEST_ON_BORROW;
+    private boolean defaultTestOnReturn =
+            BaseObjectPoolConfig.DEFAULT_TEST_ON_RETURN;
+    private boolean defaultTestWhileIdle =
+            BaseObjectPoolConfig.DEFAULT_TEST_WHILE_IDLE;
+    private long defaultTimeBetweenEvictionRunsMillis =
+            BaseObjectPoolConfig.DEFAULT_TIME_BETWEEN_EVICTION_RUNS_MILLIS;
+
+    // Connection factory properties
     private String validationQuery = null;
+    private int validationQueryTimeout = -1;
     private boolean rollbackAfterValidation = false;
     private long maxConnLifetimeMillis = -1;
 
+    // Connection properties
+    private Boolean defaultAutoCommit = null;
+    private int defaultTransactionIsolation = UNKNOWN_TRANSACTIONISOLATION;
+    private Boolean defaultReadOnly = null;
 
-    /** true iff one of the setters for testOnBorrow, testOnReturn, testWhileIdle has been called. */
-    private boolean testPositionSet = false;
-
-    /** Instance key */
-    private String instanceKey = null; // TODO make packge protected?
 
     /**
      * Default no-arg constructor for Serialization
      */
     public InstanceKeyDataSource() {
-        defaultAutoCommit = true;
     }
 
     /**
@@ -194,8 +208,317 @@ public abstract class InstanceKeyDataSource
         throw new SQLFeatureNotSupportedException();
     }
 
+
     // -------------------------------------------------------------------
     // Properties
+
+    /**
+     * Gets the default value for
+     * {@link GenericKeyedObjectPoolConfig#getBlockWhenExhausted()} for each per
+     * user pool.
+     */
+    public boolean getDefaultBlockWhenExhausted() {
+        return this.defaultBlockWhenExhausted;
+    }
+
+    /**
+     * Sets the default value for
+     * {@link GenericKeyedObjectPoolConfig#getBlockWhenExhausted()} for each per
+     * user pool.
+     */
+    public void setDefaultBlockWhenExhausted(boolean blockWhenExhausted) {
+        assertInitializationAllowed();
+        this.defaultBlockWhenExhausted = blockWhenExhausted;
+    }
+
+
+    /**
+     * Gets the default value for
+     * {@link GenericKeyedObjectPoolConfig#getEvictionPolicyClassName()} for
+     * each per user pool.
+     */
+    public String getDefaultEvictionPolicyClassName() {
+        return this.defaultEvictionPolicyClassName;
+    }
+
+    /**
+     * Sets the default value for
+     * {@link GenericKeyedObjectPoolConfig#getEvictionPolicyClassName()} for
+     * each per user pool.
+     */
+    public void setDefaultEvictionPolicyClassName(
+            String evictionPolicyClassName) {
+        assertInitializationAllowed();
+        this.defaultEvictionPolicyClassName = evictionPolicyClassName;
+    }
+
+
+    /**
+     * Gets the default value for
+     * {@link GenericKeyedObjectPoolConfig#getLifo()} for each per user pool.
+     */
+    public boolean getDefaultLifo() {
+        return this.defaultLifo;
+    }
+
+    /**
+     * Sets the default value for
+     * {@link GenericKeyedObjectPoolConfig#getLifo()} for each per user pool.
+     */
+    public void setDefaultLifo(boolean lifo) {
+        assertInitializationAllowed();
+        this.defaultLifo = lifo;
+    }
+
+
+    /**
+     * Gets the default value for
+     * {@link GenericKeyedObjectPoolConfig#getMaxIdlePerKey()} for each per user
+     * pool.
+     */
+    public int getDefaultMaxIdle() {
+        return this.defaultMaxIdle;
+    }
+
+    /**
+     * Sets the default value for
+     * {@link GenericKeyedObjectPoolConfig#getMaxIdlePerKey()} for each per user
+     * pool.
+     */
+    public void setDefaultMaxIdle(int maxIdle) {
+        assertInitializationAllowed();
+        this.defaultMaxIdle = maxIdle;
+    }
+
+
+    /**
+     * Gets the default value for
+     * {@link GenericKeyedObjectPoolConfig#getMaxTotalPerKey()} for each per
+     * user pool.
+     */
+    public int getDefaultMaxTotal() {
+        return this.defaultMaxTotal;
+    }
+
+    /**
+     * Sets the default value for
+     * {@link GenericKeyedObjectPoolConfig#getMaxTotalPerKey()} for each per
+     * user pool.
+     */
+    public void setDefaultMaxTotal(int maxTotal) {
+        assertInitializationAllowed();
+        this.defaultMaxTotal = maxTotal;
+    }
+
+
+    /**
+     * Gets the default value for
+     * {@link GenericKeyedObjectPoolConfig#getMaxWaitMillis()} for each per user
+     * pool.
+     */
+    public long getDefaultMaxWaitMillis() {
+        return this.defaultMaxWaitMillis;
+    }
+
+    /**
+     * Sets the default value for
+     * {@link GenericKeyedObjectPoolConfig#getMaxWaitMillis()} for each per user
+     * pool.
+     */
+    public void setDefaultMaxWaitMillis(long maxWaitMillis) {
+        assertInitializationAllowed();
+        this.defaultMaxWaitMillis = maxWaitMillis;
+    }
+
+
+    /**
+     * Gets the default value for
+     * {@link GenericKeyedObjectPoolConfig#getMinEvictableIdleTimeMillis()} for
+     * each per user pool.
+     */
+    public long getDefaultMinEvictableIdleTimeMillis() {
+        return this.defaultMinEvictableIdleTimeMillis;
+    }
+
+    /**
+     * Sets the default value for
+     * {@link GenericKeyedObjectPoolConfig#getMinEvictableIdleTimeMillis()} for
+     * each per user pool.
+     */
+    public void setDefaultMinEvictableIdleTimeMillis(
+            long minEvictableIdleTimeMillis) {
+        assertInitializationAllowed();
+        this.defaultMinEvictableIdleTimeMillis = minEvictableIdleTimeMillis;
+    }
+
+
+    /**
+     * Gets the default value for
+     * {@link GenericKeyedObjectPoolConfig#getMinIdlePerKey()} for each per user
+     * pool.
+     */
+    public int getDefaultMinIdle() {
+        return this.defaultMinIdle;
+    }
+
+    /**
+     * Sets the default value for
+     * {@link GenericKeyedObjectPoolConfig#getMinIdlePerKey()} for each per user
+     * pool.
+     */
+    public void setDefaultMinIdle(int minIdle) {
+        assertInitializationAllowed();
+        this.defaultMinIdle = minIdle;
+    }
+
+
+    /**
+     * Gets the default value for
+     * {@link GenericKeyedObjectPoolConfig#getNumTestsPerEvictionRun()} for each
+     * per user pool.
+     */
+    public int getDefaultNumTestsPerEvictionRun() {
+        return this.defaultNumTestsPerEvictionRun;
+    }
+
+    /**
+     * Sets the default value for
+     * {@link GenericKeyedObjectPoolConfig#getNumTestsPerEvictionRun()} for each
+     * per user pool.
+     */
+    public void setDefaultNumTestsPerEvictionRun(int numTestsPerEvictionRun) {
+        assertInitializationAllowed();
+        this.defaultNumTestsPerEvictionRun = numTestsPerEvictionRun;
+    }
+
+
+    /**
+     * Gets the default value for
+     * {@link org.apache.commons.pool2.impl.GenericObjectPool GenericObjectPool#getSoftMinEvictableIdleTimeMillis()} for each
+     * per user pool.
+     */
+    public long getDefaultSoftMinEvictableIdleTimeMillis() {
+        return this.defaultSoftMinEvictableIdleTimeMillis;
+    }
+
+    /**
+     * Sets the default value for
+     * {@link org.apache.commons.pool2.impl.GenericObjectPool GenericObjectPool#getSoftMinEvictableIdleTimeMillis()} for each per user pool.
+     */
+    public void setDefaultSoftMinEvictableIdleTimeMillis(
+            long softMinEvictableIdleTimeMillis) {
+        assertInitializationAllowed();
+        this.defaultSoftMinEvictableIdleTimeMillis = softMinEvictableIdleTimeMillis;
+    }
+
+
+    /**
+     * Gets the default value for
+     * {@link org.apache.commons.pool2.impl.GenericObjectPool GenericObjectPool#getTestOnCreate()} for each per user pool.
+     */
+    public boolean getDefaultTestOnCreate() {
+        return this.defaultTestOnCreate;
+    }
+
+    /**
+     * Sets the default value for
+     * {@link org.apache.commons.pool2.impl.GenericObjectPool GenericObjectPool#getTestOnCreate()} for each per user pool.
+     */
+    public void setDefaultTestOnCreate(boolean testOnCreate) {
+        assertInitializationAllowed();
+        this.defaultTestOnCreate = testOnCreate;
+    }
+
+
+    /**
+     * Gets the default value for
+     * {@link org.apache.commons.pool2.impl.GenericObjectPool GenericObjectPool#getTestOnBorrow()} for each per user pool.
+     */
+    public boolean getDefaultTestOnBorrow() {
+        return this.defaultTestOnBorrow;
+    }
+
+    /**
+     * Sets the default value for
+     * {@link org.apache.commons.pool2.impl.GenericObjectPool GenericObjectPool#getTestOnBorrow()} for each per user pool.
+     */
+    public void setDefaultTestOnBorrow(boolean testOnBorrow) {
+        assertInitializationAllowed();
+        this.defaultTestOnBorrow = testOnBorrow;
+    }
+
+
+    /**
+     * Gets the default value for
+     * {@link org.apache.commons.pool2.impl.GenericObjectPool GenericObjectPool#getTestOnReturn()} for each per user pool.
+     */
+    public boolean getDefaultTestOnReturn() {
+        return this.defaultTestOnReturn;
+    }
+
+    /**
+     * Sets the default value for
+     * {@link org.apache.commons.pool2.impl.GenericObjectPool GenericObjectPool#getTestOnReturn()} for each per user pool.
+     */
+    public void setDefaultTestOnReturn(boolean testOnReturn) {
+        assertInitializationAllowed();
+        this.defaultTestOnReturn = testOnReturn;
+    }
+
+
+    /**
+     * Gets the default value for
+     * {@link org.apache.commons.pool2.impl.GenericObjectPool GenericObjectPool#getTestWhileIdle()} for each per user pool.
+     */
+    public boolean getDefaultTestWhileIdle() {
+        return this.defaultTestWhileIdle;
+    }
+
+    /**
+     * Sets the default value for
+     * {@link org.apache.commons.pool2.impl.GenericObjectPool GenericObjectPool#getTestWhileIdle()} for each per user pool.
+     */
+    public void setDefaultTestWhileIdle(boolean testWhileIdle) {
+        assertInitializationAllowed();
+        this.defaultTestWhileIdle = testWhileIdle;
+    }
+
+
+    /**
+     * Gets the default value for
+     * {@link org.apache.commons.pool2.impl.GenericObjectPool GenericObjectPool#getTimeBetweenEvictionRunsMillis ()} for each
+     * per user pool.
+     */
+    public long getDefaultTimeBetweenEvictionRunsMillis () {
+        return this.defaultTimeBetweenEvictionRunsMillis ;
+    }
+
+    /**
+     * Sets the default value for
+     * {@link org.apache.commons.pool2.impl.GenericObjectPool GenericObjectPool#getTimeBetweenEvictionRunsMillis ()} for each
+     * per user pool.
+     */
+    public void setDefaultTimeBetweenEvictionRunsMillis (
+            long timeBetweenEvictionRunsMillis ) {
+        assertInitializationAllowed();
+        this.defaultTimeBetweenEvictionRunsMillis = timeBetweenEvictionRunsMillis ;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     /**
      * Get the value of connectionPoolDataSource.  This method will return
@@ -225,7 +548,7 @@ public abstract class InstanceKeyDataSource
                 "The CPDS has already been set. It cannot be altered.");
         }
         dataSource = v;
-        instanceKey = InstanceKeyObjectFactory.registerNewInstance(this);
+        instanceKey = InstanceKeyDataSourceFactory.registerNewInstance(this);
     }
 
     /**
@@ -260,18 +583,19 @@ public abstract class InstanceKeyDataSource
                 "It cannot be altered.");
         }
         this.dataSourceName = v;
-        instanceKey = InstanceKeyObjectFactory.registerNewInstance(this);
+        instanceKey = InstanceKeyDataSourceFactory.registerNewInstance(this);
     }
 
     /**
      * Get the value of defaultAutoCommit, which defines the state of
      * connections handed out from this pool.  The value can be changed
      * on the Connection using Connection.setAutoCommit(boolean).
-     * The default is true.
+     * The default is <code>null</code> which will use the default value for the
+     * drive.
      *
      * @return value of defaultAutoCommit.
      */
-    public boolean isDefaultAutoCommit() {
+    public Boolean isDefaultAutoCommit() {
         return defaultAutoCommit;
     }
 
@@ -279,11 +603,12 @@ public abstract class InstanceKeyDataSource
      * Set the value of defaultAutoCommit, which defines the state of
      * connections handed out from this pool.  The value can be changed
      * on the Connection using Connection.setAutoCommit(boolean).
-     * The default is true.
+     * The default is <code>null</code> which will use the default value for the
+     * drive.
      *
      * @param v  Value to assign to defaultAutoCommit.
      */
-    public void setDefaultAutoCommit(boolean v) {
+    public void setDefaultAutoCommit(Boolean v) {
         assertInitializationAllowed();
         this.defaultAutoCommit = v;
     }
@@ -292,11 +617,12 @@ public abstract class InstanceKeyDataSource
      * Get the value of defaultReadOnly, which defines the state of
      * connections handed out from this pool.  The value can be changed
      * on the Connection using Connection.setReadOnly(boolean).
-     * The default is false.
+     * The default is <code>null</code> which will use the default value for the
+     * drive.
      *
      * @return value of defaultReadOnly.
      */
-    public boolean isDefaultReadOnly() {
+    public Boolean isDefaultReadOnly() {
         return defaultReadOnly;
     }
 
@@ -304,11 +630,12 @@ public abstract class InstanceKeyDataSource
      * Set the value of defaultReadOnly, which defines the state of
      * connections handed out from this pool.  The value can be changed
      * on the Connection using Connection.setReadOnly(boolean).
-     * The default is false.
+     * The default is <code>null</code> which will use the default value for the
+     * drive.
      *
      * @param v  Value to assign to defaultReadOnly.
      */
-    public void setDefaultReadOnly(boolean v) {
+    public void setDefaultReadOnly(Boolean v) {
         assertInitializationAllowed();
         this.defaultReadOnly = v;
     }
@@ -322,7 +649,7 @@ public abstract class InstanceKeyDataSource
      * @return value of defaultTransactionIsolation.
      */
     public int getDefaultTransactionIsolation() {
-            return defaultTransactionIsolation;
+        return defaultTransactionIsolation;
     }
 
     /**
@@ -462,243 +789,42 @@ public abstract class InstanceKeyDataSource
     }
 
     /**
-     * @see #getTestOnBorrow
-     */
-    public final boolean isTestOnBorrow() {
-        return getTestOnBorrow();
-    }
-
-    /**
-     * When <tt>true</tt>, objects will be
-     * {*link PoolableObjectFactory#validateObject validated}
-     * before being returned by the {*link #borrowObject}
-     * method.  If the object fails to validate,
-     * it will be dropped from the pool, and we will attempt
-     * to borrow another.
-     *
-     * @see #setTestOnBorrow
-     */
-    public boolean getTestOnBorrow() {
-        return _testOnBorrow;
-    }
-
-    /**
-     * When <tt>true</tt>, objects will be
-     * {*link PoolableObjectFactory#validateObject validated}
-     * before being returned by the {*link #borrowObject}
-     * method.  If the object fails to validate,
-     * it will be dropped from the pool, and we will attempt
-     * to borrow another. For a <code>true</code> value to have any effect,
-     * the <code>validationQuery</code> property must be set to a non-null
-     * string.
-     *
-     * @see #getTestOnBorrow
-     */
-    public void setTestOnBorrow(boolean testOnBorrow) {
-        assertInitializationAllowed();
-        _testOnBorrow = testOnBorrow;
-        testPositionSet = true;
-    }
-
-    /**
-     * @see #getTestOnReturn
-     */
-    public final boolean isTestOnReturn() {
-        return getTestOnReturn();
-    }
-
-    /**
-     * When <tt>true</tt>, objects will be
-     * {*link PoolableObjectFactory#validateObject validated}
-     * before being returned to the pool within the
-     * {*link #returnObject}.
-     *
-     * @see #setTestOnReturn
-     */
-    public boolean getTestOnReturn() {
-        return _testOnReturn;
-    }
-
-    /**
-     * When <tt>true</tt>, objects will be
-     * {*link PoolableObjectFactory#validateObject validated}
-     * before being returned to the pool within the
-     * {*link #returnObject}. For a <code>true</code> value to have any effect,
-     * the <code>validationQuery</code> property must be set to a non-null
-     * string.
-     *
-     * @see #getTestOnReturn
-     */
-    public void setTestOnReturn(boolean testOnReturn) {
-        assertInitializationAllowed();
-        _testOnReturn = testOnReturn;
-        testPositionSet = true;
-    }
-
-    /**
-     * Returns the number of milliseconds to sleep between runs of the
-     * idle object evictor thread.
-     * When non-positive, no idle object evictor thread will be
-     * run.
-     *
-     * @see #setTimeBetweenEvictionRunsMillis
-     */
-    public int getTimeBetweenEvictionRunsMillis() {
-        return _timeBetweenEvictionRunsMillis;
-    }
-
-    /**
-     * Sets the number of milliseconds to sleep between runs of the
-     * idle object evictor thread.
-     * When non-positive, no idle object evictor thread will be
-     * run.
-     *
-     * @see #getTimeBetweenEvictionRunsMillis
-     */
-    public void
-        setTimeBetweenEvictionRunsMillis(int timeBetweenEvictionRunsMillis) {
-        assertInitializationAllowed();
-            _timeBetweenEvictionRunsMillis = timeBetweenEvictionRunsMillis;
-    }
-
-    /**
-     * Returns the number of objects to examine during each run of the
-     * idle object evictor thread (if any).
-     *
-     * @see #setNumTestsPerEvictionRun
-     * @see #setTimeBetweenEvictionRunsMillis
-     */
-    public int getNumTestsPerEvictionRun() {
-        return _numTestsPerEvictionRun;
-    }
-
-    /**
-     * Sets the number of objects to examine during each run of the
-     * idle object evictor thread (if any).
-     * <p>
-     * When a negative value is supplied, <tt>ceil({*link #numIdle})/abs({*link #getNumTestsPerEvictionRun})</tt>
-     * tests will be run.  I.e., when the value is <i>-n</i>, roughly one <i>n</i>th of the
-     * idle objects will be tested per run.
-     *
-     * @see #getNumTestsPerEvictionRun
-     * @see #setTimeBetweenEvictionRunsMillis
-     */
-    public void setNumTestsPerEvictionRun(int numTestsPerEvictionRun) {
-        assertInitializationAllowed();
-        _numTestsPerEvictionRun = numTestsPerEvictionRun;
-    }
-
-    /**
-     * Returns the minimum amount of time an object may sit idle in the pool
-     * before it is eligable for eviction by the idle object evictor
-     * (if any).
-     *
-     * @see #setMinEvictableIdleTimeMillis
-     * @see #setTimeBetweenEvictionRunsMillis
-     */
-    public int getMinEvictableIdleTimeMillis() {
-        return _minEvictableIdleTimeMillis;
-    }
-
-    /**
-     * Sets the minimum amount of time an object may sit idle in the pool
-     * before it is eligable for eviction by the idle object evictor
-     * (if any).
-     * When non-positive, no objects will be evicted from the pool
-     * due to idle time alone.
-     *
-     * @see #getMinEvictableIdleTimeMillis
-     * @see #setTimeBetweenEvictionRunsMillis
-     */
-    public void setMinEvictableIdleTimeMillis(int minEvictableIdleTimeMillis) {
-        assertInitializationAllowed();
-        _minEvictableIdleTimeMillis = minEvictableIdleTimeMillis;
-    }
-
-    /**
-     * Gets the EvictionPolicy implementation in use with this connection pool.
-     *
-     * @since 2.0
-     */
-    public synchronized String getEvictionPolicyClassName() {
-        return evictionPolicyClassName;
-    }
-
-    /**
-     * Sets the EvictionPolicy implementation to use with this connection pool.
-     *
-     * @param evictionPolicyClassName   The fully qualified class name of the
-     *                                  EvictionPolicy implementation
-     *
-     * @since 2.0
-     */
-    public synchronized void setEvictionPolicyClassName(
-            String evictionPolicyClassName) {
-        assertInitializationAllowed();
-        this.evictionPolicyClassName = evictionPolicyClassName;
-    }
-
-    /**
-     * @see #getTestWhileIdle
-     */
-    public final boolean isTestWhileIdle() {
-        return getTestWhileIdle();
-    }
-
-    /**
-     * When <tt>true</tt>, objects will be
-     * {*link PoolableObjectFactory#validateObject validated}
-     * by the idle object evictor (if any).  If an object
-     * fails to validate, it will be dropped from the pool.
-     *
-     * @see #setTestWhileIdle
-     * @see #setTimeBetweenEvictionRunsMillis
-     */
-    public boolean getTestWhileIdle() {
-        return _testWhileIdle;
-    }
-
-    /**
-     * When <tt>true</tt>, objects will be
-     * {*link PoolableObjectFactory#validateObject validated}
-     * by the idle object evictor (if any).  If an object
-     * fails to validate, it will be dropped from the pool. For a
-     * <code>true</code> value to have any effect,
-     * the <code>validationQuery</code> property must be set to a non-null
-     * string.
-     *
-     * @see #getTestWhileIdle
-     * @see #setTimeBetweenEvictionRunsMillis
-     */
-    public void setTestWhileIdle(boolean testWhileIdle) {
-        assertInitializationAllowed();
-        _testWhileIdle = testWhileIdle;
-        testPositionSet = true;
-    }
-
-    /**
      * The SQL query that will be used to validate connections from this pool
      * before returning them to the caller.  If specified, this query
      * <strong>MUST</strong> be an SQL SELECT statement that returns at least
-     * one row.
+     * one row. If not specified, {@link Connection#isValid(int)} will be used
+     * to validate connections.
      */
     public String getValidationQuery() {
-        return (this.validationQuery);
+        return this.validationQuery;
     }
 
     /**
      * The SQL query that will be used to validate connections from this pool
      * before returning them to the caller.  If specified, this query
      * <strong>MUST</strong> be an SQL SELECT statement that returns at least
-     * one row. If none of the properties, testOnBorow, testOnReturn, testWhileIdle
-     * have been previously set, calling this method sets testOnBorrow to true.
+     * one row. If not specified, connections will be validated using
+     * {@link Connection#isValid(int)}.
      */
     public void setValidationQuery(String validationQuery) {
         assertInitializationAllowed();
         this.validationQuery = validationQuery;
-        if (!testPositionSet) {
-            setTestOnBorrow(true);
-        }
+    }
+
+    /**
+     * Returns the timeout in seconds before the validation query fails.
+     */
+    public int getValidationQueryTimeout() {
+        return validationQueryTimeout;
+    }
+
+    /**
+     * Sets the timeout in seconds before the validation query fails.
+     *
+     * @param validationQueryTimeout    The new timeout in seconds
+     */
+    public void setValidationQueryTimeout(int validationQueryTimeout) {
+        this.validationQueryTimeout = validationQueryTimeout;
     }
 
     /**
@@ -708,10 +834,9 @@ public abstract class InstanceKeyDataSource
      *
      * @return true if a rollback will be issued after executing the
      * validation query
-     * @since 1.2.2
      */
     public boolean isRollbackAfterValidation() {
-        return (this.rollbackAfterValidation);
+        return this.rollbackAfterValidation;
     }
 
     /**
@@ -722,7 +847,6 @@ public abstract class InstanceKeyDataSource
      * if a validation query is set
      *
      * @param rollbackAfterValidation new property value
-     * @since 1.2.2
      */
     public void setRollbackAfterValidation(boolean rollbackAfterValidation) {
         assertInitializationAllowed();
@@ -842,12 +966,11 @@ public abstract class InstanceKeyDataSource
                 }
                 if (info != null && password != null && password.equals(info.getPassword())) {
                     break;
-                } else {
-                    if (info != null) {
-                        manager.invalidate(info.getPooledConnection());
-                    }
-                    info = null;
                 }
+                if (info != null) {
+                    manager.invalidate(info.getPooledConnection());
+                }
+                info = null;
             }
             if (info == null) {
                 throw new SQLException("Cannot borrow connection from pool - password change failure.");
@@ -940,31 +1063,5 @@ public abstract class InstanceKeyDataSource
             }
         }
         return cpds;
-    }
-
-    // ----------------------------------------------------------------------
-    // Referenceable implementation
-
-    /**
-     * Retrieves the Reference of this object.
-     * <strong>Note:</strong> <code>InstanceKeyDataSource</code> subclasses
-     * should override this method. The implementaion included below
-     * is not robust and will be removed at the next major version DBCP
-     * release.
-     *
-     * @return The non-null Reference of this object.
-     * @exception NamingException If a naming exception was encountered
-     *      while retrieving the reference.
-     */
-    // TODO: Remove the implementation of this method at next major
-    // version release.
-
-    @Override
-    public Reference getReference() throws NamingException {
-        final String className = getClass().getName();
-        final String factoryName = className + "Factory"; // XXX: not robust
-        Reference ref = new Reference(className, factoryName, null);
-        ref.add(new StringRefAddr("instanceKey", instanceKey));
-        return ref;
     }
 }

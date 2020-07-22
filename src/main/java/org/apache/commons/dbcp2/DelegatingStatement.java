@@ -41,6 +41,7 @@ import java.util.List;
  * @author James House
  * @author Dirk Verbeeck
  * @version $Revision$ $Date$
+ * @since 2.0
  */
 public class DelegatingStatement extends AbandonedTrace implements Statement {
     /** My delegate. */
@@ -142,14 +143,14 @@ public class DelegatingStatement extends AbandonedTrace implements Statement {
                 List<AbandonedTrace> resultSets = getTrace();
                 if( resultSets != null) {
                     ResultSet[] set = resultSets.toArray(new ResultSet[resultSets.size()]);
-                    for (int i = 0; i < set.length; i++) {
-                        set[i].close();
+                    for (ResultSet element : set) {
+                        element.close();
                     }
                     clearTrace();
                 }
 
                 if (_stmt != null) {
-                	_stmt.close();
+                    _stmt.close();
                 }
             }
             catch (SQLException e) {
@@ -348,7 +349,6 @@ public class DelegatingStatement extends AbandonedTrace implements Statement {
      * Returns a String representation of this object.
      *
      * @return String
-     * @since 1.2.2
      */
     @Override
     public String toString() {
@@ -460,15 +460,12 @@ public class DelegatingStatement extends AbandonedTrace implements Statement {
 
     /*
      * Note was protected prior to JDBC 4
-     * TODO Consider adding build flags to make this protected unless we are
-     *      using JDBC 4.
      */
     @Override
     public boolean isClosed() throws SQLException {
         return _closed;
     }
 
-/* JDBC_4_ANT_KEY_BEGIN */
 
     @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
@@ -514,7 +511,6 @@ public class DelegatingStatement extends AbandonedTrace implements Statement {
             return false;
         }
     }
-/* JDBC_4_ANT_KEY_END */
 
     @Override
     public void closeOnCompletion() throws SQLException {
@@ -536,4 +532,18 @@ public class DelegatingStatement extends AbandonedTrace implements Statement {
             return false;
         }
     }
+
+    // @Override
+    // protected void finalize() throws Throwable {
+    //     // This is required because of statement pooling. The poolable
+    //     // statements will always be strongly held by the statement pool. If the
+    //     // delegating statements that wrap the poolable statement are not
+    //     // strongly held they will be garbage collected but at that point the
+    //     // poolable statements need to be returned to the pool else there will
+    //     // be a leak of statements from the pool. Closing this statement will
+    //     // close all the wrapped statements and return any poolable statements
+    //     // to the pool.
+    //     close();
+    //     super.finalize();
+    // }
 }

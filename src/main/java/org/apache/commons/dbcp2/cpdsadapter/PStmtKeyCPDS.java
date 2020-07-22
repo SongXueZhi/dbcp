@@ -22,6 +22,7 @@ import org.apache.commons.dbcp2.PStmtKey;
 
 /**
  * A key uniquely identifying a {@link java.sql.PreparedStatement PreparedStatement}.
+ * @since 2.0
  */
 public class PStmtKeyCPDS extends PStmtKey {
     private final Integer _resultSetHoldability;
@@ -107,7 +108,7 @@ public class PStmtKeyCPDS extends PStmtKey {
         int result = super.hashCode();
         result = prime * result + Arrays.hashCode(_columnIndexes);
         result = prime * result + Arrays.hashCode(_columnNames);
-        result = prime * result + ((_resultSetHoldability == null) ? 0 : _resultSetHoldability.hashCode());
+        result = prime * result + (_resultSetHoldability == null ? 0 : _resultSetHoldability.hashCode());
         return result;
     }
 

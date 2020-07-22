@@ -32,11 +32,11 @@ import java.sql.SQLException;
  * the 2-phase protocol.
  *
  * @author Dain Sundstrom
- * @version $Revision$
+ * @since 2.0
  */
 public class LocalXAConnectionFactory implements XAConnectionFactory {
-    private TransactionRegistry transactionRegistry;
-    private ConnectionFactory connectionFactory;
+    private final TransactionRegistry transactionRegistry;
+    private final ConnectionFactory connectionFactory;
 
     /**
      * Creates an LocalXAConnectionFactory which uses the specified connection factory to create database
@@ -46,8 +46,12 @@ public class LocalXAConnectionFactory implements XAConnectionFactory {
      * @param connectionFactory  the connection factory from which connections will be retrieved
      */
     public LocalXAConnectionFactory(TransactionManager transactionManager, ConnectionFactory connectionFactory) {
-        if (transactionManager == null) throw new NullPointerException("transactionManager is null");
-        if (connectionFactory == null) throw new NullPointerException("connectionFactory is null");
+        if (transactionManager == null) {
+            throw new NullPointerException("transactionManager is null");
+        }
+        if (connectionFactory == null) {
+            throw new NullPointerException("connectionFactory is null");
+        }
 
         this.transactionRegistry = new TransactionRegistry(transactionManager);
         this.connectionFactory = connectionFactory;
@@ -83,6 +87,7 @@ public class LocalXAConnectionFactory implements XAConnectionFactory {
      * </p>
      * It is assumed that the wrapper around a managed connection disables the setAutoCommit(),
      * commit(), rollback() and setReadOnly() methods while a transaction is in progress.
+     * @since 2.0
      */
     protected static class LocalXAResource implements XAResource {
         private final Connection connection;
@@ -156,8 +161,12 @@ public class LocalXAConnectionFactory implements XAConnectionFactory {
          */
         @Override
         public synchronized void end(Xid xid, int flag) throws XAException {
-            if (xid == null) throw new NullPointerException("xid is null");
-            if (!this.currentXid.equals(xid)) throw new XAException("Invalid Xid: expected " + this.currentXid + ", but was " + xid);
+            if (xid == null) {
+                throw new NullPointerException("xid is null");
+            }
+            if (!this.currentXid.equals(xid)) {
+                throw new XAException("Invalid Xid: expected " + this.currentXid + ", but was " + xid);
+            }
 
             // This notification tells us that the application server is done using this
             // connection for the time being.  The connection is still associated with an
@@ -243,8 +252,12 @@ public class LocalXAConnectionFactory implements XAConnectionFactory {
          */
         @Override
         public synchronized void rollback(Xid xid) throws XAException {
-            if (xid == null) throw new NullPointerException("xid is null");
-            if (!this.currentXid.equals(xid)) throw new XAException("Invalid Xid: expected " + this.currentXid + ", but was " + xid);
+            if (xid == null) {
+                throw new NullPointerException("xid is null");
+            }
+            if (!this.currentXid.equals(xid)) {
+                throw new XAException("Invalid Xid: expected " + this.currentXid + ", but was " + xid);
+            }
 
             try {
                 connection.rollback();
@@ -277,8 +290,8 @@ public class LocalXAConnectionFactory implements XAConnectionFactory {
          */
         @Override
         public synchronized void forget(Xid xid) {
-            if (xid != null && this.currentXid.equals(xid)) {
-                this.currentXid = null;
+            if (xid != null && xid.equals(currentXid)) {
+                currentXid = null;
             }
         }
 

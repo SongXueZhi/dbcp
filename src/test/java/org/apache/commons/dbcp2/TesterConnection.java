@@ -25,7 +25,6 @@ import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
 import java.util.Map;
-/* JDBC_4_ANT_KEY_BEGIN */
 import java.sql.Array;
 import java.sql.Blob;
 import java.sql.Clob;
@@ -34,7 +33,6 @@ import java.sql.SQLClientInfoException;
 import java.sql.SQLXML;
 import java.sql.Struct;
 import java.util.Properties;
-/* JDBC_4_ANT_KEY_END */
 import java.util.concurrent.Executor;
 
 /**
@@ -54,12 +52,11 @@ public class TesterConnection implements Connection {
     protected boolean _readOnly = false;
     protected SQLWarning warnings = null;
     protected String username = null;
-    protected String password = null;
     protected Exception failure;
 
-    public TesterConnection(String username, String password) {
+    public TesterConnection(String username,
+            @SuppressWarnings("unused") String password) {
         this.username = username;
-        this.password = password;
     }
 
     public String getUsername() {
@@ -317,7 +314,6 @@ public class TesterConnection implements Connection {
         return prepareStatement(sql);
     }
 
-/* JDBC_4_ANT_KEY_BEGIN */
 
     @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
@@ -361,7 +357,7 @@ public class TesterConnection implements Connection {
 
     @Override
     public boolean isValid(int timeout) throws SQLException {
-        throw new SQLException("Not implemented.");
+        return _open;
     }
 
     @Override
@@ -383,7 +379,6 @@ public class TesterConnection implements Connection {
     public String getClientInfo(String name) throws SQLException {
         throw new SQLException("Not implemented.");
     }
-/* JDBC_4_ANT_KEY_END */
 
     @Override
     public void setSchema(String schema) throws SQLException {

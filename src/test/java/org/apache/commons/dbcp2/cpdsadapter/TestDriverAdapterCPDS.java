@@ -18,7 +18,6 @@
 package org.apache.commons.dbcp2.cpdsadapter;
 
 import java.util.Properties;
-
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -131,16 +130,16 @@ public class TestDriverAdapterCPDS extends TestCase {
         // get a new connection
         c[0] = pcds.getPooledConnection("u1", "p1").getConnection();
 
-        for (int i=0; i<c.length; i++) {
-            c[i].close();
+        for (Connection element : c) {
+            element.close();
         }
 
         // open all the connections
         for (int i=0; i<c.length; i++) {
             c[i] = pcds.getPooledConnection("u1", "p1").getConnection();
         }
-        for (int i=0; i<c.length; i++) {
-            c[i].close();
+        for (Connection element : c) {
+            element.close();
         }
     }
 
@@ -175,16 +174,16 @@ public class TestDriverAdapterCPDS extends TestCase {
         SharedPoolDataSource spds = new SharedPoolDataSource();
         spds.setConnectionPoolDataSource(pcds);
         spds.setMaxTotal(threads.length + 10);
-        spds.setMaxWaitMillis(-1);
-        spds.setMaxIdle(10);
-        spds.setDefaultAutoCommit(false);
+        spds.setDefaultMaxWaitMillis(-1);
+        spds.setDefaultMaxIdle(10);
+        spds.setDefaultAutoCommit(Boolean.FALSE);
 
         spds.setValidationQuery("SELECT 1");
-        spds.setTimeBetweenEvictionRunsMillis(10000);
-        spds.setNumTestsPerEvictionRun(-1);
-        spds.setTestWhileIdle(true);
-        spds.setTestOnBorrow(true);
-        spds.setTestOnReturn(false);
+        spds.setDefaultTimeBetweenEvictionRunsMillis(10000);
+        spds.setDefaultNumTestsPerEvictionRun(-1);
+        spds.setDefaultTestWhileIdle(true);
+        spds.setDefaultTestOnBorrow(true);
+        spds.setDefaultTestOnReturn(false);
 
         for (int i = 0; i < threads.length; i++) {
             threads[i] = new ThreadDbcp367(spds);

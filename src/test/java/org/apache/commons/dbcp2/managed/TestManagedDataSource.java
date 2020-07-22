@@ -81,8 +81,8 @@ public class TestManagedDataSource extends TestConnectionPool {
         PoolableConnectionFactory factory =
             new PoolableConnectionFactory(xaConnectionFactory, null);
         factory.setValidationQuery("SELECT DUMMY FROM DUAL");
-        factory.setDefaultReadOnly(true);
-        factory.setDefaultAutoCommit(true);
+        factory.setDefaultReadOnly(Boolean.TRUE);
+        factory.setDefaultAutoCommit(Boolean.TRUE);
 
         // create the pool
         pool = new GenericObjectPool<>(factory);
@@ -154,8 +154,8 @@ public class TestManagedDataSource extends TestConnectionPool {
         Assert.assertEquals(
                 ((DelegatingConnection<?>) c[0]).getInnermostDelegateInternal(),
                 ((DelegatingConnection<?>) con).getInnermostDelegateInternal());
-        for (int i = 0; i < c.length; i++) {
-            c[i].close();
+        for (Connection element : c) {
+            element.close();
         }
         ds.setAccessToUnderlyingConnectionAllowed(true);
     }
@@ -176,8 +176,8 @@ public class TestManagedDataSource extends TestConnectionPool {
         Assert.assertEquals(
                 ((DelegatingConnection<?>) c[0]).getInnermostDelegateInternal(),
                 ((DelegatingConnection<?>) con).getInnermostDelegateInternal());
-        for (int i = 0; i < c.length; i++) {
-            c[i].close();
+        for (Connection element : c) {
+            element.close();
         }
     }
 

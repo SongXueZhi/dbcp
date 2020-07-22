@@ -28,13 +28,11 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.Calendar;
-/* JDBC_4_ANT_KEY_BEGIN */
 import java.io.InputStream;
 import java.io.Reader;
 import java.sql.NClob;
 import java.sql.RowId;
 import java.sql.SQLXML;
-/* JDBC_4_ANT_KEY_END */
 
 /**
  * A dummy {@link PreparedStatement}, for testing purposes.
@@ -44,7 +42,7 @@ import java.sql.SQLXML;
  * @version $Revision$ $Date$
  */
 public class TesterPreparedStatement extends TesterStatement implements PreparedStatement {
-    private ResultSetMetaData _resultSetMetaData = null;
+    private final ResultSetMetaData _resultSetMetaData = null;
     private String _sql = null;
     private String _catalog = null;
 
@@ -52,7 +50,9 @@ public class TesterPreparedStatement extends TesterStatement implements Prepared
         super(conn);
         try {
             _catalog = conn.getCatalog();
-        } catch (SQLException e) { }
+        } catch (SQLException e) {
+            // Ignored
+        }
     }
 
     public TesterPreparedStatement(Connection conn, String sql) {
@@ -60,7 +60,9 @@ public class TesterPreparedStatement extends TesterStatement implements Prepared
         _sql = sql;
         try {
             _catalog = conn.getCatalog();
-        } catch (SQLException e) { }
+        } catch (SQLException e) {
+            // Ignored
+        }
     }
 
     public TesterPreparedStatement(Connection conn, String sql, int resultSetType, int resultSetConcurrency) {
@@ -68,7 +70,9 @@ public class TesterPreparedStatement extends TesterStatement implements Prepared
         _sql = sql;
         try {
             _catalog = conn.getCatalog();
-        } catch (SQLException e) { }
+        } catch (SQLException e) {
+            // Ignored
+        }
     }
 
     /** for junit test only */
@@ -82,7 +86,7 @@ public class TesterPreparedStatement extends TesterStatement implements Prepared
         if("null".equals(sql)) {
             return null;
         } else {
-            return new TesterResultSet(this, null, _resultSetType, _resultSetConcurrency);
+            return new TesterResultSet(this, _resultSetType, _resultSetConcurrency);
         }
     }
 
@@ -97,8 +101,11 @@ public class TesterPreparedStatement extends TesterStatement implements Prepared
         checkOpen();
         if("null".equals(_sql)) {
             return null;
+        } else if (_queryTimeout > 0 && _queryTimeout < 5) {
+            // Simulate timeout if queryTimout is set to less than 5 seconds
+            throw new SQLException("query timeout");
         } else {
-            return new TesterResultSet(this, null, _resultSetType, _resultSetConcurrency);
+            return new TesterResultSet(this, _resultSetType, _resultSetConcurrency);
         }
     }
 
@@ -284,7 +291,7 @@ public class TesterPreparedStatement extends TesterStatement implements Prepared
 
     @Override
     public ResultSet getGeneratedKeys() throws SQLException {
-        return new TesterResultSet(this, null, _resultSetType, _resultSetConcurrency);
+        return new TesterResultSet(this, _resultSetType, _resultSetConcurrency);
     }
 
     @Override
@@ -339,7 +346,6 @@ public class TesterPreparedStatement extends TesterStatement implements Prepared
         throw new SQLException("Not implemented.");
     }
 
-/* JDBC_4_ANT_KEY_BEGIN */
 
     @Override
     public void setRowId(int parameterIndex, RowId value) throws SQLException {
@@ -430,7 +436,6 @@ public class TesterPreparedStatement extends TesterStatement implements Prepared
     public void setNClob(int parameterIndex, Reader reader) throws SQLException {
         throw new SQLException("Not implemented.");
     }
-/* JDBC_4_ANT_KEY_END */
 
     @Override
     public String toString() {

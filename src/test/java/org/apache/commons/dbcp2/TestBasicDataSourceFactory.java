@@ -20,8 +20,6 @@ package org.apache.commons.dbcp2;
 import java.sql.Connection;
 import java.util.Properties;
 
-import javax.sql.DataSource;
-
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
@@ -43,17 +41,16 @@ public class TestBasicDataSourceFactory extends TestCase {
 
     public void testNoProperties() throws Exception {
         Properties properties = new Properties();
-        DataSource ds = BasicDataSourceFactory.createDataSource(properties);
+        BasicDataSource ds = BasicDataSourceFactory.createDataSource(properties);
 
         assertNotNull(ds);
-        assertTrue(ds instanceof BasicDataSource);
     }
 
     public void testProperties() throws Exception {
         Properties properties = new Properties();
         properties.setProperty("driverClassName", "org.apache.commons.dbcp2.TesterDriver");
         properties.setProperty("url", "jdbc:apache:commons:testdriver");
-        properties.setProperty("maxActive", "10");
+        properties.setProperty("maxTotal", "10");
         properties.setProperty("maxIdle", "8");
         properties.setProperty("minIdle", "0");
         properties.setProperty("maxWaitMillis", "500");
@@ -92,8 +89,8 @@ public class TestBasicDataSourceFactory extends TestCase {
         assertEquals(500, ds.getMaxWaitMillis());
         assertEquals(5, ds.getInitialSize());
         assertEquals(5, ds.getNumIdle());
-        assertEquals(true, ds.getDefaultAutoCommit());
-        assertEquals(false, ds.getDefaultReadOnly());
+        assertEquals(Boolean.TRUE, ds.getDefaultAutoCommit());
+        assertEquals(Boolean.FALSE, ds.getDefaultReadOnly());
         assertEquals(Connection.TRANSACTION_READ_COMMITTED, ds.getDefaultTransactionIsolation());
         assertEquals("test", ds.getDefaultCatalog());
         assertEquals(true, ds.getTestOnBorrow());

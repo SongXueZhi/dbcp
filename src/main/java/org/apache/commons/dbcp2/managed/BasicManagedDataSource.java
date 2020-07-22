@@ -50,7 +50,7 @@ import java.sql.SQLException;
  *
  * @see BasicDataSource
  * @see ManagedConnection
- * @version $Revision$
+ * @since 2.0
  */
 public class BasicManagedDataSource extends BasicDataSource {
     /** Transaction Registry */
@@ -188,16 +188,18 @@ public class BasicManagedDataSource extends BasicDataSource {
             connectionFactory.setValidationQuery(getValidationQuery());
             connectionFactory.setValidationQueryTimeout(getValidationQueryTimeout());
             connectionFactory.setConnectionInitSql(getConnectionInitSqls());
-            if (getDefaultReadOnlyBoolean() != null) {
-                connectionFactory.setDefaultReadOnly(getDefaultReadOnly());
-            }
+            connectionFactory.setDefaultReadOnly(getDefaultReadOnly());
             connectionFactory.setDefaultAutoCommit(getDefaultAutoCommit());
             connectionFactory.setDefaultTransactionIsolation(getDefaultTransactionIsolation());
             connectionFactory.setDefaultCatalog(getDefaultCatalog());
+            connectionFactory.setCacheState(getCacheState());
             connectionFactory.setPoolStatements(isPoolPreparedStatements());
             connectionFactory.setMaxOpenPrepatedStatements(
                     getMaxOpenPreparedStatements());
             connectionFactory.setMaxConnLifetimeMillis(getMaxConnLifetimeMillis());
+            connectionFactory.setRollbackOnReturn(getRollbackOnReturn());
+            connectionFactory.setEnableAutoCommitOnReturn(getEnableAutoCommitOnReturn());
+            connectionFactory.setDefaultQueryTimeout(getDefaultQueryTimeout());
             validateConnectionFactory(connectionFactory);
         } catch (RuntimeException e) {
             throw e;

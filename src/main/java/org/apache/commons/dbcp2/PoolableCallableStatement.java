@@ -33,7 +33,7 @@ import org.apache.commons.pool2.KeyedObjectPool;
  *
  * @see PoolingConnection
  * @version $Revision$ $Date$
- * @since 1.3
+ * @since 2.0
  */
 public class PoolableCallableStatement extends DelegatingCallableStatement {
 
@@ -119,8 +119,8 @@ public class PoolableCallableStatement extends DelegatingCallableStatement {
         List<AbandonedTrace> resultSets = getTrace();
         if(resultSets != null) {
             ResultSet[] set = resultSets.toArray(new ResultSet[resultSets.size()]);
-            for(int i = 0; i < set.length; i++) {
-                set[i].close();
+            for (ResultSet element : set) {
+                element.close();
             }
             clearTrace();
         }

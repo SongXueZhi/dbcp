@@ -17,31 +17,31 @@
 
 package org.apache.commons.dbcp2.cpdsadapter;
 
-import java.util.Hashtable;
-import java.util.Properties;
-import java.util.logging.Logger;
 import java.io.PrintWriter;
 import java.io.Serializable;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import java.util.Hashtable;
+import java.util.Properties;
+import java.util.logging.Logger;
 
-import javax.sql.PooledConnection;
-import javax.sql.ConnectionPoolDataSource;
-import javax.naming.Name;
 import javax.naming.Context;
-import javax.naming.Referenceable;
-import javax.naming.spi.ObjectFactory;
-import javax.naming.Reference;
-import javax.naming.RefAddr;
-import javax.naming.StringRefAddr;
+import javax.naming.Name;
 import javax.naming.NamingException;
+import javax.naming.RefAddr;
+import javax.naming.Reference;
+import javax.naming.Referenceable;
+import javax.naming.StringRefAddr;
+import javax.naming.spi.ObjectFactory;
+import javax.sql.ConnectionPoolDataSource;
+import javax.sql.PooledConnection;
 
 import org.apache.commons.dbcp2.PoolablePreparedStatement;
 import org.apache.commons.pool2.KeyedObjectPool;
+import org.apache.commons.pool2.impl.BaseObjectPoolConfig;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPoolConfig;
-import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 
 /**
  * <p>
@@ -89,6 +89,7 @@ import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
  *
  * @author John D. McNally
  * @version $Revision$ $Date$
+ * @since 2.0
  */
 public class DriverAdapterCPDS
     implements ConnectionPoolDataSource, Referenceable, Serializable,
@@ -121,7 +122,7 @@ public class DriverAdapterCPDS
     private boolean poolPreparedStatements;
     private int maxIdle = 10;
     private long _timeBetweenEvictionRunsMillis =
-            GenericObjectPoolConfig.DEFAULT_TIME_BETWEEN_EVICTION_RUNS_MILLIS;
+            BaseObjectPoolConfig.DEFAULT_TIME_BETWEEN_EVICTION_RUNS_MILLIS;
     private int _numTestsPerEvictionRun = -1;
     private int _minEvictableIdleTimeMillis = -1;
     private int _maxPreparedStatements = -1;
@@ -192,7 +193,7 @@ public class DriverAdapterCPDS
             }
             pci.setAccessToUnderlyingConnectionAllowed(isAccessToUnderlyingConnectionAllowed());
         }
-        KeyedObjectPool<PStmtKeyCPDS, PoolablePreparedStatement<PStmtKeyCPDS, PoolablePreparedStatementStub>> stmtPool = null;
+        KeyedObjectPool<PStmtKeyCPDS, PoolablePreparedStatement<PStmtKeyCPDS>> stmtPool = null;
         if (isPoolPreparedStatements()) {
             GenericKeyedObjectPoolConfig config = new GenericKeyedObjectPoolConfig();
             config.setMaxTotalPerKey(Integer.MAX_VALUE);
@@ -366,7 +367,6 @@ public class DriverAdapterCPDS
      * Get the connection properties passed to the JDBC driver.
      *
      * @return the JDBC connection properties used when creating connections.
-     * @since 1.3
      */
     public Properties getConnectionProperties() {
         return connectionProperties;
@@ -385,7 +385,6 @@ public class DriverAdapterCPDS
      * of these properties if <code>connectionProperties</code> is not null.</p>
      *
      * @param props Connection properties to use when creating new connections.
-     * @since 1.3
      * @throws IllegalStateException if {@link #getPooledConnection()} has been called
      */
     public void setConnectionProperties(Properties props) {
@@ -533,7 +532,7 @@ public class DriverAdapterCPDS
      * Set the log writer for this data source. NOT USED.
      */
     @Override
-    public void setLogWriter(java.io.PrintWriter out) {
+    public void setLogWriter(PrintWriter out) {
         logWriter = out;
     }
 
@@ -566,7 +565,7 @@ public class DriverAdapterCPDS
      * @return the value of maxIdle
      */
     public int getMaxIdle() {
-        return (this.maxIdle);
+        return this.maxIdle;
     }
 
     /**
@@ -689,7 +688,6 @@ public class DriverAdapterCPDS
      * Returns the maximun number of prepared statements.
      *
      * @return maxPrepartedStatements value
-     * @since 1.2.2
      */
     public int getMaxPreparedStatements()
     {
@@ -700,8 +698,6 @@ public class DriverAdapterCPDS
      * Sets the maximum number of prepared statements.
      * @param maxPreparedStatements the new maximum number of prepared
      * statements
-     *
-     * @since 1.2.2
      */
     public void setMaxPreparedStatements(int maxPreparedStatements)
     {

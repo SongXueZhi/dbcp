@@ -48,6 +48,7 @@ import javax.naming.spi.ObjectFactory;
  * @author Craig R. McClanahan
  * @author Dirk Verbeeck
  * @version $Revision$ $Date$
+ * @since 2.0
  */
 public class BasicDataSourceFactory implements ObjectFactory {
 
@@ -58,11 +59,12 @@ public class BasicDataSourceFactory implements ObjectFactory {
     private final static String PROP_CACHESTATE ="cacheState";
     private final static String PROP_DRIVERCLASSNAME = "driverClassName";
     private final static String PROP_LIFO = "lifo";
-    private final static String PROP_MAXACTIVE = "maxActive";
+    private final static String PROP_MAXTOTAL = "maxTotal";
     private final static String PROP_MAXIDLE = "maxIdle";
     private final static String PROP_MINIDLE = "minIdle";
     private final static String PROP_INITIALSIZE = "initialSize";
     private final static String PROP_MAXWAITMILLIS = "maxWaitMillis";
+    private final static String PROP_TESTONCREATE = "testOnCreate";
     private final static String PROP_TESTONBORROW = "testOnBorrow";
     private final static String PROP_TESTONRETURN = "testOnReturn";
     private final static String PROP_TIMEBETWEENEVICTIONRUNSMILLIS = "timeBetweenEvictionRunsMillis";
@@ -81,7 +83,6 @@ public class BasicDataSourceFactory implements ObjectFactory {
     /**
      * The property name for connectionInitSqls.
      * The associated value String must be of the form [query;]*
-     * @since 1.3
      */
     private final static String PROP_CONNECTIONINITSQLS = "connectionInitSqls";
     private final static String PROP_ACCESSTOUNDERLYINGCONNECTIONALLOWED = "accessToUnderlyingConnectionAllowed";
@@ -93,6 +94,9 @@ public class BasicDataSourceFactory implements ObjectFactory {
     private final static String PROP_MAXOPENPREPAREDSTATEMENTS = "maxOpenPreparedStatements";
     private final static String PROP_CONNECTIONPROPERTIES = "connectionProperties";
     private final static String PROP_MAXCONNLIFETIMEMILLIS = "maxConnLifetimeMillis";
+    private final static String PROP_ROLLBACK_ON_RETURN = "rollbackOnReturn";
+    private final static String PROP_ENABLE_AUTOCOMMIT_ON_RETURN = "enableAutoCommitOnReturn";
+    private final static String PROP_DEFAULT_QUERYTIMEOUT = "defaultQueryTimeout";
 
     private final static String[] ALL_PROPERTIES = {
         PROP_DEFAULTAUTOCOMMIT,
@@ -102,11 +106,12 @@ public class BasicDataSourceFactory implements ObjectFactory {
         PROP_CACHESTATE,
         PROP_DRIVERCLASSNAME,
         PROP_LIFO,
-        PROP_MAXACTIVE,
+        PROP_MAXTOTAL,
         PROP_MAXIDLE,
         PROP_MINIDLE,
         PROP_INITIALSIZE,
         PROP_MAXWAITMILLIS,
+        PROP_TESTONCREATE,
         PROP_TESTONBORROW,
         PROP_TESTONRETURN,
         PROP_TIMEBETWEENEVICTIONRUNSMILLIS,
@@ -129,7 +134,10 @@ public class BasicDataSourceFactory implements ObjectFactory {
         PROP_POOLPREPAREDSTATEMENTS,
         PROP_MAXOPENPREPAREDSTATEMENTS,
         PROP_CONNECTIONPROPERTIES,
-        PROP_MAXCONNLIFETIMEMILLIS
+        PROP_MAXCONNLIFETIMEMILLIS,
+        PROP_ROLLBACK_ON_RETURN,
+        PROP_ENABLE_AUTOCOMMIT_ON_RETURN,
+        PROP_DEFAULT_QUERYTIMEOUT
     };
 
     // -------------------------------------------------- ObjectFactory Methods
@@ -155,7 +163,7 @@ public class BasicDataSourceFactory implements ObjectFactory {
 
         // We only know how to deal with <code>javax.naming.Reference</code>s
         // that specify a class name of "javax.sql.DataSource"
-        if ((obj == null) || !(obj instanceof Reference)) {
+        if (obj == null || !(obj instanceof Reference)) {
             return null;
         }
         Reference ref = (Reference) obj;
@@ -164,8 +172,7 @@ public class BasicDataSourceFactory implements ObjectFactory {
         }
 
         Properties properties = new Properties();
-        for (int i = 0 ; i < ALL_PROPERTIES.length ; i++) {
-            String propertyName = ALL_PROPERTIES[i];
+        for (String propertyName : ALL_PROPERTIES) {
             RefAddr ra = ref.get(propertyName);
             if (ra != null) {
                 String propertyValue = ra.getContent().toString();
@@ -189,12 +196,12 @@ public class BasicDataSourceFactory implements ObjectFactory {
 
         value = properties.getProperty(PROP_DEFAULTAUTOCOMMIT);
         if (value != null) {
-            dataSource.setDefaultAutoCommit(Boolean.valueOf(value).booleanValue());
+            dataSource.setDefaultAutoCommit(Boolean.valueOf(value));
         }
 
         value = properties.getProperty(PROP_DEFAULTREADONLY);
         if (value != null) {
-            dataSource.setDefaultReadOnly(Boolean.valueOf(value).booleanValue());
+            dataSource.setDefaultReadOnly(Boolean.valueOf(value));
         }
 
         value = properties.getProperty(PROP_DEFAULTTRANSACTIONISOLATION);
@@ -248,7 +255,7 @@ public class BasicDataSourceFactory implements ObjectFactory {
             dataSource.setLifo(Boolean.valueOf(value).booleanValue());
         }
 
-        value = properties.getProperty(PROP_MAXACTIVE);
+        value = properties.getProperty(PROP_MAXTOTAL);
         if (value != null) {
             dataSource.setMaxTotal(Integer.parseInt(value));
         }
@@ -271,6 +278,11 @@ public class BasicDataSourceFactory implements ObjectFactory {
         value = properties.getProperty(PROP_MAXWAITMILLIS);
         if (value != null) {
             dataSource.setMaxWaitMillis(Long.parseLong(value));
+        }
+
+        value = properties.getProperty(PROP_TESTONCREATE);
+        if (value != null) {
+            dataSource.setTestOnCreate(Boolean.valueOf(value).booleanValue());
         }
 
         value = properties.getProperty(PROP_TESTONBORROW);
@@ -405,6 +417,22 @@ public class BasicDataSourceFactory implements ObjectFactory {
         if (value != null) {
             dataSource.setJmxName(value);
         }
+
+        value = properties.getProperty(PROP_ENABLE_AUTOCOMMIT_ON_RETURN);
+        if (value != null) {
+            dataSource.setEnableAutoCommitOnReturn(Boolean.valueOf(value).booleanValue());
+        }
+
+        value = properties.getProperty(PROP_ROLLBACK_ON_RETURN);
+        if (value != null) {
+            dataSource.setRollbackOnReturn(Boolean.valueOf(value).booleanValue());
+        }
+
+        value = properties.getProperty(PROP_DEFAULT_QUERYTIMEOUT);
+        if (value != null) {
+            dataSource.setDefaultQueryTimeout(Integer.valueOf(value));
+        }
+
 
         // DBCP-215
         // Trick to make sure that initialSize connections are created

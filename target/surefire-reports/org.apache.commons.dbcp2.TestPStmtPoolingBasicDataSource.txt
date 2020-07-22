@@ -1,0 +1,5 @@
+-------------------------------------------------------------------------------
+Test set: org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource
+-------------------------------------------------------------------------------
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 10.275 sec - in org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource
+testMultipleThreads1(org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource)  Time elapsed: 10.193 sec

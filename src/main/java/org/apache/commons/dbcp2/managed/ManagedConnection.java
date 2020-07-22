@@ -37,8 +37,10 @@ import java.sql.SQLException;
  * When enlisted in a transaction the setAutoCommit(), commit(), rollback(), and setReadOnly() methods
  * throw a SQLException.  This is necessary to assure that the transaction completes as a single unit.
  *
+ * @param <C> the Connection type
+ *
  * @author Dain Sundstrom
- * @version $Revision$
+ * @since 2.0
  */
 public class ManagedConnection<C extends Connection> extends DelegatingConnection<C> {
     private final ObjectPool<C> pool;
@@ -71,12 +73,11 @@ public class ManagedConnection<C extends Connection> extends DelegatingConnectio
                     throw new SQLException("Connection can not be used while enlisted in another transaction");
                 }
                 return;
-            } else {
-                // transaction should have been cleared up by TransactionContextListener, but in
-                // rare cases another lister could have registered which uses the connection before
-                // our listener is called.  In that rare case, trigger the transaction complete call now
-                transactionComplete();
             }
+            // transaction should have been cleared up by TransactionContextListener, but in
+            // rare cases another lister could have registered which uses the connection before
+            // our listener is called.  In that rare case, trigger the transaction complete call now
+            transactionComplete();
         }
 
         // the existing transaction context ended (or we didn't have one), get the active transaction context
@@ -166,6 +167,7 @@ public class ManagedConnection<C extends Connection> extends DelegatingConnectio
     /**
      * Delegates to {@link ManagedConnection#transactionComplete()}
      * for transaction completion events.
+     * @since 2.0
      */
     protected class CompletionListener implements TransactionContextListener {
         @Override
@@ -258,17 +260,15 @@ public class ManagedConnection<C extends Connection> extends DelegatingConnectio
     public C getDelegate() {
         if (isAccessToUnderlyingConnectionAllowed()) {
             return getDelegateInternal();
-        } else {
-            return null;
         }
+        return null;
     }
 
     @Override
     public Connection getInnermostDelegate() {
         if (isAccessToUnderlyingConnectionAllowed()) {
             return super.getInnermostDelegateInternal();
-        } else {
-            return null;
         }
+        return null;
     }
 }

@@ -22,6 +22,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.sql.DataSource;
 
@@ -59,8 +60,8 @@ public class TestBasicDataSource extends TestConnectionPool {
         ds.setUrl("jdbc:apache:commons:testdriver");
         ds.setMaxTotal(getMaxTotal());
         ds.setMaxWaitMillis(getMaxWaitMillis());
-        ds.setDefaultAutoCommit(true);
-        ds.setDefaultReadOnly(false);
+        ds.setDefaultAutoCommit(Boolean.TRUE);
+        ds.setDefaultReadOnly(Boolean.FALSE);
         ds.setDefaultTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
         ds.setDefaultCatalog(CATALOG);
         ds.setUsername("username");
@@ -244,12 +245,10 @@ public class TestBasicDataSource extends TestConnectionPool {
     }
 
     public void testInvalidValidationQuery() {
-        try {
-            ds.setValidationQuery("invalid");
-            ds.getConnection();
+        ds.setValidationQuery("invalid");
+        try (Connection c = ds.getConnection()) {
             fail("expected SQLException");
-        }
-        catch (SQLException e) {
+        } catch (SQLException e) {
             if (e.toString().indexOf("invalid") < 0) {
                 fail("expected detailed error message");
             }
@@ -259,8 +258,7 @@ public class TestBasicDataSource extends TestConnectionPool {
     public void testValidationQueryTimoutFail() {
         ds.setTestOnBorrow(true);
         ds.setValidationQueryTimeout(3); // Too fast for TesterStatement
-        try {
-            ds.getConnection();
+        try (Connection c = ds.getConnection()) {
             fail("expected SQLException");
         } catch (SQLException ex) {
             if (ex.toString().indexOf("timeout") < 0) {
@@ -306,7 +304,7 @@ public class TestBasicDataSource extends TestConnectionPool {
     public void testInvalidConnectionInitSql() {
         try {
             ds.setConnectionInitSqls(Arrays.asList(new String[]{"SELECT 1","invalid"}));
-            ds.getConnection();
+            try (Connection c = ds.getConnection()) {}
             fail("expected SQLException");
         }
         catch (SQLException e) {
@@ -337,20 +335,6 @@ public class TestBasicDataSource extends TestConnectionPool {
         assertEquals(false, ds.getTestWhileIdle());
     }
 
-    public void testNoValidationQuery() throws Exception {
-        ds.setTestOnBorrow(true);
-        ds.setTestOnReturn(true);
-        ds.setTestWhileIdle(true);
-        ds.setValidationQuery("");
-
-        Connection conn = ds.getConnection();
-        conn.close();
-
-        assertEquals(false, ds.getTestOnBorrow());
-        assertEquals(false, ds.getTestOnReturn());
-        assertEquals(false, ds.getTestWhileIdle());
-    }
-
     public void testDefaultCatalog() throws Exception {
         Connection[] c = new Connection[getMaxTotal()];
         for (int i = 0; i < c.length; i++) {
@@ -359,9 +343,9 @@ public class TestBasicDataSource extends TestConnectionPool {
             assertEquals(CATALOG, c[i].getCatalog());
         }
 
-        for (int i = 0; i < c.length; i++) {
-            c[i].setCatalog("error");
-            c[i].close();
+        for (Connection element : c) {
+            element.setCatalog("error");
+            element.close();
         }
 
         for (int i = 0; i < c.length; i++) {
@@ -370,14 +354,14 @@ public class TestBasicDataSource extends TestConnectionPool {
             assertEquals(CATALOG, c[i].getCatalog());
         }
 
-        for (int i = 0; i < c.length; i++) {
-            c[i].close();
+        for (Connection element : c) {
+            element.close();
         }
     }
 
     public void testSetAutoCommitTrueOnClose() throws Exception {
         ds.setAccessToUnderlyingConnectionAllowed(true);
-        ds.setDefaultAutoCommit(false);
+        ds.setDefaultAutoCommit(Boolean.FALSE);
 
         Connection conn = getConnection();
         assertNotNull(conn);
@@ -451,8 +435,8 @@ public class TestBasicDataSource extends TestConnectionPool {
      * trying to commit or rollback a readOnly connection.
      */
     public void testRollbackReadOnly() throws Exception {
-        ds.setDefaultReadOnly(true);
-        ds.setDefaultAutoCommit(false);
+        ds.setDefaultReadOnly(Boolean.TRUE);
+        ds.setDefaultAutoCommit(Boolean.FALSE);
 
         Connection conn = ds.getConnection();
         assertNotNull(conn);
@@ -488,8 +472,8 @@ public class TestBasicDataSource extends TestConnectionPool {
         ds.setUrl("jdbc:apache:commons:testdriver");
         ds.setMaxTotal(getMaxTotal());
         ds.setMaxWaitMillis(getMaxWaitMillis());
-        ds.setDefaultAutoCommit(true);
-        ds.setDefaultReadOnly(false);
+        ds.setDefaultAutoCommit(Boolean.TRUE);
+        ds.setDefaultReadOnly(Boolean.FALSE);
         ds.setDefaultTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
         ds.setDefaultCatalog(CATALOG);
         ds.setUsername("username");
@@ -500,8 +484,7 @@ public class TestBasicDataSource extends TestConnectionPool {
         ds.setValidationQuery("SELECT DUMMY FROM DUAL");
         int threadCount = Thread.activeCount();
         for (int i = 0; i < 10; i++) {
-            try {
-                ds.getConnection();
+            try (Connection c = ds.getConnection()){
             } catch (SQLException ex) {
                 // ignore
             }
@@ -545,23 +528,23 @@ public class TestBasicDataSource extends TestConnectionPool {
 
         // Prevent concurrent execution of threads executing test subclasses
         synchronized (TesterConnRequestCountDriver.class) {
-    	    TesterConnRequestCountDriver.initConnRequestCount();
+            TesterConnRequestCountDriver.initConnRequestCount();
 
-    	    // user request 10 times
-    	    for (int i=0; i<10; i++) {
-    	        try {
-    	            @SuppressWarnings("unused")
-    	            DataSource ds2 = ds.createDataSource();
-    	        } catch (SQLException e) {
-    	            // Ignore
-    	        }
-    	    }
+            // user request 10 times
+            for (int i=0; i<10; i++) {
+                try {
+                    @SuppressWarnings("unused")
+                    DataSource ds2 = ds.createDataSource();
+                } catch (SQLException e) {
+                    // Ignore
+                }
+            }
 
-    	    // sleep 1000ms. evictor will be invoked 10 times if running.
-    	    Thread.sleep(1000);
+            // sleep 1000ms. evictor will be invoked 10 times if running.
+            Thread.sleep(1000);
 
-    	    // Make sure there have been no Evictor-generated requests (count should be 10, from requests above)
-    	    assertEquals(10, TesterConnRequestCountDriver.getConnectionRequestCount());
+            // Make sure there have been no Evictor-generated requests (count should be 10, from requests above)
+            assertEquals(10, TesterConnRequestCountDriver.getConnectionRequestCount());
         }
 
         // make sure cleanup is complete
@@ -574,11 +557,11 @@ public class TestBasicDataSource extends TestConnectionPool {
  */
 class TesterConnRequestCountDriver extends TesterDriver {
     private static final String CONNECT_STRING = "jdbc:apache:commons:testerConnRequestCountDriver";
-    private static int connectionRequestCount = 0;
+    private static AtomicInteger connectionRequestCount = new AtomicInteger(0);
 
-	@Override
+    @Override
     public Connection connect(String url, Properties info) throws SQLException {
-        connectionRequestCount++;
+        connectionRequestCount.incrementAndGet();
         return super.connect(url, info);
     }
 
@@ -587,11 +570,11 @@ class TesterConnRequestCountDriver extends TesterDriver {
         return CONNECT_STRING.startsWith(url);
     }
 
-	public static int getConnectionRequestCount() {
-	    return connectionRequestCount;
-	}
+    public static int getConnectionRequestCount() {
+        return connectionRequestCount.get();
+    }
 
     public static void initConnRequestCount() {
-	    connectionRequestCount = 0;
+        connectionRequestCount.set(0);
     }
 }

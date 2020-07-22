@@ -21,19 +21,20 @@ import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Blob;
 import java.sql.Clob;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.Ref;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.Time;
+import java.sql.Timestamp;
 import java.util.Calendar;
-/* JDBC_4_ANT_KEY_BEGIN */
 import java.io.InputStream;
 import java.io.Reader;
 import java.sql.NClob;
 import java.sql.RowId;
 import java.sql.SQLXML;
-/* JDBC_4_ANT_KEY_END */
 
 /**
  * A base delegating implementation of {@link PreparedStatement}.
@@ -53,6 +54,7 @@ import java.sql.SQLXML;
  * @author James House
  * @author Dirk Verbeeck
  * @version $Revision$ $Date$
+ * @since 2.0
  */
 public class DelegatingPreparedStatement extends DelegatingStatement
         implements PreparedStatement {
@@ -68,11 +70,6 @@ public class DelegatingPreparedStatement extends DelegatingStatement
     public DelegatingPreparedStatement(DelegatingConnection<?> c,
                                        PreparedStatement s) {
         super(c, s);
-    }
-
-    /** Sets my delegate. */
-    public void setDelegate(PreparedStatement s) {
-        super.setDelegate(s);
     }
 
     @Override
@@ -149,29 +146,29 @@ public class DelegatingPreparedStatement extends DelegatingStatement
     { checkOpen(); try { ((PreparedStatement)getDelegate()).setBytes(parameterIndex,x); } catch (SQLException e) { handleException(e); } }
 
     @Override
-    public void setDate(int parameterIndex, java.sql.Date x) throws SQLException
+    public void setDate(int parameterIndex, Date x) throws SQLException
     { checkOpen(); try { ((PreparedStatement)getDelegate()).setDate(parameterIndex,x); } catch (SQLException e) { handleException(e); } }
 
     @Override
-    public void setTime(int parameterIndex, java.sql.Time x) throws SQLException
+    public void setTime(int parameterIndex, Time x) throws SQLException
     { checkOpen(); try { ((PreparedStatement)getDelegate()).setTime(parameterIndex,x); } catch (SQLException e) { handleException(e); } }
 
     @Override
-    public void setTimestamp(int parameterIndex, java.sql.Timestamp x) throws SQLException
+    public void setTimestamp(int parameterIndex, Timestamp x) throws SQLException
     { checkOpen(); try { ((PreparedStatement)getDelegate()).setTimestamp(parameterIndex,x); } catch (SQLException e) { handleException(e); } }
 
     @Override
-    public void setAsciiStream(int parameterIndex, java.io.InputStream x, int length) throws SQLException
+    public void setAsciiStream(int parameterIndex, InputStream x, int length) throws SQLException
     { checkOpen(); try { ((PreparedStatement)getDelegate()).setAsciiStream(parameterIndex,x,length); } catch (SQLException e) { handleException(e); } }
 
     /** @deprecated */
     @Deprecated
     @Override
-    public void setUnicodeStream(int parameterIndex, java.io.InputStream x, int length) throws SQLException
+    public void setUnicodeStream(int parameterIndex, InputStream x, int length) throws SQLException
     { checkOpen(); try { ((PreparedStatement)getDelegate()).setUnicodeStream(parameterIndex,x,length); } catch (SQLException e) { handleException(e); } }
 
     @Override
-    public void setBinaryStream(int parameterIndex, java.io.InputStream x, int length) throws SQLException
+    public void setBinaryStream(int parameterIndex, InputStream x, int length) throws SQLException
     { checkOpen(); try { ((PreparedStatement)getDelegate()).setBinaryStream(parameterIndex,x,length); } catch (SQLException e) { handleException(e); } }
 
     @Override
@@ -209,7 +206,7 @@ public class DelegatingPreparedStatement extends DelegatingStatement
     { checkOpen(); try { ((PreparedStatement)getDelegate()).addBatch(); } catch (SQLException e) { handleException(e); } }
 
     @Override
-    public void setCharacterStream(int parameterIndex, java.io.Reader reader, int length) throws SQLException
+    public void setCharacterStream(int parameterIndex, Reader reader, int length) throws SQLException
     { checkOpen(); try { ((PreparedStatement)getDelegate()).setCharacterStream(parameterIndex,reader,length); } catch (SQLException e) { handleException(e); } }
 
     @Override
@@ -233,15 +230,15 @@ public class DelegatingPreparedStatement extends DelegatingStatement
     { checkOpen(); try { return ((PreparedStatement)getDelegate()).getMetaData(); } catch (SQLException e) { handleException(e); throw new AssertionError(); } }
 
     @Override
-    public void setDate(int parameterIndex, java.sql.Date x, Calendar cal) throws SQLException
+    public void setDate(int parameterIndex, Date x, Calendar cal) throws SQLException
     { checkOpen(); try { ((PreparedStatement)getDelegate()).setDate(parameterIndex,x,cal); } catch (SQLException e) { handleException(e); } }
 
     @Override
-    public void setTime(int parameterIndex, java.sql.Time x, Calendar cal) throws SQLException
+    public void setTime(int parameterIndex, Time x, Calendar cal) throws SQLException
     { checkOpen(); try { ((PreparedStatement)getDelegate()).setTime(parameterIndex,x,cal); } catch (SQLException e) { handleException(e); } }
 
     @Override
-    public void setTimestamp(int parameterIndex, java.sql.Timestamp x, Calendar cal) throws SQLException
+    public void setTimestamp(int parameterIndex, Timestamp x, Calendar cal) throws SQLException
     { checkOpen(); try { ((PreparedStatement)getDelegate()).setTimestamp(parameterIndex,x,cal); } catch (SQLException e) { handleException(e); } }
 
     @Override
@@ -252,7 +249,6 @@ public class DelegatingPreparedStatement extends DelegatingStatement
      * Returns a String representation of this object.
      *
      * @return String
-     * @since 1.2.2
      */
     @Override
     public String toString() {
@@ -267,7 +263,6 @@ public class DelegatingPreparedStatement extends DelegatingStatement
     public java.sql.ParameterMetaData getParameterMetaData() throws SQLException
     { checkOpen(); try { return ((PreparedStatement)getDelegate()).getParameterMetaData(); } catch (SQLException e) { handleException(e); throw new AssertionError(); } }
 
-/* JDBC_4_ANT_KEY_BEGIN */
 
     @Override
     public void setRowId(int parameterIndex, RowId value) throws SQLException {
@@ -466,5 +461,4 @@ public class DelegatingPreparedStatement extends DelegatingStatement
             handleException(e);
         }
     }
-/* JDBC_4_ANT_KEY_END */
 }

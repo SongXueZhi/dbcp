@@ -66,18 +66,18 @@ public class TestCPDSConnectionFactory extends TestCase {
        PerUserPoolDataSource ds = new PerUserPoolDataSource();
        ds.setConnectionPoolDataSource(cpds);
        ds.setPerUserMaxTotal("username", Integer.valueOf(10));
-       ds.setPerUserMaxWaitMillis("username", Integer.valueOf(50));
+       ds.setPerUserMaxWaitMillis("username", Long.valueOf(50));
        ds.setPerUserMaxIdle("username", Integer.valueOf(2));
        Connection conn1 = ds.getConnection("username", "password");
        Connection conn2 = ds.getConnection("username", "password");
        Connection conn3 = ds.getConnection("username", "password");
-       assertEquals(3, ds.getNumActive("username", "password"));
+       assertEquals(3, ds.getNumActive("username"));
        conn1.close();
-       assertEquals(1, ds.getNumIdle("username", "password"));
+       assertEquals(1, ds.getNumIdle("username"));
        conn2.close();
-       assertEquals(2, ds.getNumIdle("username", "password"));
+       assertEquals(2, ds.getNumIdle("username"));
        conn3.close(); // Return to pool will trigger destroy -> close sequence
-       assertEquals(2, ds.getNumIdle("username", "password"));
+       assertEquals(2, ds.getNumIdle("username"));
     }
 
     /**
@@ -88,8 +88,8 @@ public class TestCPDSConnectionFactory extends TestCase {
      */
     public void testConnectionErrorCleanup() throws Exception {
         // Setup factory
-        CPDSConnectionFactory factory =
-                new CPDSConnectionFactory(cpds, null, false, "username", "password");
+        CPDSConnectionFactory factory = new CPDSConnectionFactory(
+                cpds, null, -1, false, "username", "password");
         GenericObjectPool<PooledConnectionAndInfo> pool =
                 new GenericObjectPool<>(factory);
         factory.setPool(pool);

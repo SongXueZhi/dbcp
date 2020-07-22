@@ -32,11 +32,14 @@ import org.apache.commons.pool2.ObjectPool;
  * A simple {@link DataSource} implementation that obtains
  * {@link Connection}s from the specified {@link ObjectPool}.
  *
+ * @param <C> The connection type
+ *
  * @author Rodney Waldhoff
  * @author Glenn L. Nielsen
  * @author James House
  * @author Dirk Verbeeck
  * @version $Revision$ $Date$
+ * @since 2.0
  */
 public class PoolingDataSource<C extends Connection> implements DataSource {
 
@@ -172,6 +175,7 @@ public class PoolingDataSource<C extends Connection> implements DataSource {
     /**
      * PoolGuardConnectionWrapper is a Connection wrapper that makes sure a
      * closed connection cannot be used anymore.
+     * @since 2.0
      */
     private class PoolGuardConnectionWrapper<D extends Connection>
             extends DelegatingConnection<D> {
@@ -187,9 +191,8 @@ public class PoolingDataSource<C extends Connection> implements DataSource {
         public D getDelegate() {
             if (isAccessToUnderlyingConnectionAllowed()) {
                 return super.getDelegate();
-            } else {
-                return null;
             }
+            return null;
         }
 
         /**
@@ -199,9 +202,24 @@ public class PoolingDataSource<C extends Connection> implements DataSource {
         public Connection getInnermostDelegate() {
             if (isAccessToUnderlyingConnectionAllowed()) {
                 return super.getInnermostDelegate();
-            } else {
-                return null;
             }
+            return null;
+        }
+
+        @Override
+        public void close() throws SQLException {
+            if (getDelegateInternal() != null) {
+                super.close();
+                super.setDelegate(null);
+            }
+        }
+
+        @Override
+        public boolean isClosed() throws SQLException {
+            if (getDelegateInternal() == null) {
+                return true;
+            }
+            return super.isClosed();
         }
     }
 }

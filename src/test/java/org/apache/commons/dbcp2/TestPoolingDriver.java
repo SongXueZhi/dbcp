@@ -18,6 +18,7 @@
 package org.apache.commons.dbcp2;
 
 import java.io.ByteArrayOutputStream;
+import java.io.OutputStreamWriter;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -32,6 +33,7 @@ import junit.framework.TestSuite;
 import org.apache.commons.pool2.ObjectPool;
 import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
+import org.junit.Assert;
 
 /**
  * Tests for a  {@link GenericObjectPool} based {@link PoolingDriver}.
@@ -64,8 +66,8 @@ public class TestPoolingDriver extends TestConnectionPool {
         pcf.setPoolStatements(true);
         pcf.setMaxOpenPrepatedStatements(10);
         pcf.setValidationQuery("SELECT COUNT(*) FROM DUAL");
-        pcf.setDefaultReadOnly(false);
-        pcf.setDefaultAutoCommit(true);
+        pcf.setDefaultReadOnly(Boolean.FALSE);
+        pcf.setDefaultAutoCommit(Boolean.TRUE);
 
         GenericObjectPoolConfig poolConfig = new GenericObjectPoolConfig();
         poolConfig.setMaxTotal(getMaxTotal());
@@ -96,20 +98,20 @@ public class TestPoolingDriver extends TestConnectionPool {
         ConnectionFactory connectionFactory = new DriverManagerConnectionFactory("jdbc:some:connect:string","username","password");
         PoolableConnectionFactory pcf =
             new PoolableConnectionFactory(connectionFactory, null);
-        pcf.setDefaultReadOnly(false);
-        pcf.setDefaultAutoCommit(true);
+        pcf.setDefaultReadOnly(Boolean.FALSE);
+        pcf.setDefaultAutoCommit(Boolean.TRUE);
         GenericObjectPool<PoolableConnection> connectionPool =
                 new GenericObjectPool<>(pcf);
-        @SuppressWarnings("unused") // Ensure PoolingDataSource can be created
         DataSource ds = new PoolingDataSource<>(connectionPool);
+        Assert.assertNotNull(ds);
     }
 
     public void test2() {
         ConnectionFactory connectionFactory = new DriverManagerConnectionFactory("jdbc:some:connect:string","username","password");
         PoolableConnectionFactory pcf =
             new PoolableConnectionFactory(connectionFactory, null);
-        pcf.setDefaultReadOnly(false);
-        pcf.setDefaultAutoCommit(true);
+        pcf.setDefaultReadOnly(Boolean.FALSE);
+        pcf.setDefaultAutoCommit(Boolean.TRUE);
         GenericObjectPool<PoolableConnection> connectionPool = new GenericObjectPool<>(pcf);
         PoolingDriver driver2 = new PoolingDriver();
         driver2.registerPool("example",connectionPool);
@@ -148,8 +150,8 @@ public class TestPoolingDriver extends TestConnectionPool {
             "password");
         PoolableConnectionFactory poolableConnectionFactory =
             new PoolableConnectionFactory(connectionFactory, null);
-        poolableConnectionFactory.setDefaultReadOnly(false);
-        poolableConnectionFactory.setDefaultAutoCommit(true);
+        poolableConnectionFactory.setDefaultReadOnly(Boolean.FALSE);
+        poolableConnectionFactory.setDefaultAutoCommit(Boolean.TRUE);
         ObjectPool<PoolableConnection> connectionPool =
                 new GenericObjectPool<>(poolableConnectionFactory,config);
         poolableConnectionFactory.setPool(connectionPool);
@@ -177,8 +179,7 @@ public class TestPoolingDriver extends TestConnectionPool {
         PoolingDriver driver2 = (PoolingDriver) DriverManager.getDriver("jdbc:apache:commons:dbcp:");
         driver2.closePool("test");
 
-        try {
-            DriverManager.getConnection("jdbc:apache:commons:dbcp:test");
+        try (Connection c = DriverManager.getConnection("jdbc:apache:commons:dbcp:test")) {
             fail("expected SQLException");
         }
         catch (SQLException e) {
@@ -203,9 +204,9 @@ public class TestPoolingDriver extends TestConnectionPool {
     }
 
     public void testLogWriter() throws Exception {
-        PrintStream ps = new PrintStream(new ByteArrayOutputStream());
-        PrintWriter pw = new PrintWriter(new ByteArrayOutputStream());
-        System.setErr(new PrintStream(new ByteArrayOutputStream()));
+        PrintStream ps = new PrintStream(new ByteArrayOutputStream(), false, "UTF-8");
+        PrintWriter pw = new PrintWriter(new OutputStreamWriter(new ByteArrayOutputStream(), "UTF-8"));
+        System.setErr(new PrintStream(new ByteArrayOutputStream(), false, "UTF-8"));
         SQLException ex;
 
         DriverManager.setLogWriter(pw);

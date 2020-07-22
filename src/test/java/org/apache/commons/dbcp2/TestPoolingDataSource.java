@@ -60,8 +60,8 @@ public class TestPoolingDataSource extends TestConnectionPool {
                             "jdbc:apache:commons:testdriver", props),
                     null);
         factory.setValidationQuery("SELECT DUMMY FROM DUAL");
-        factory.setDefaultReadOnly(true);
-        factory.setDefaultAutoCommit(true);
+        factory.setDefaultReadOnly(Boolean.TRUE);
+        factory.setDefaultAutoCommit(Boolean.TRUE);
         pool = new GenericObjectPool<>(factory);
         factory.setPool(pool);
         pool.setMaxTotal(getMaxTotal());
@@ -92,8 +92,8 @@ public class TestPoolingDataSource extends TestConnectionPool {
         Assert.assertEquals(
                 ((DelegatingConnection<?>) c[0]).getInnermostDelegateInternal(),
                 ((DelegatingConnection<?>) con).getInnermostDelegateInternal());
-        for (int i = 0; i < c.length; i++) {
-            c[i].close();
+        for (Connection element : c) {
+            element.close();
         }
     }
 

@@ -32,11 +32,11 @@ import java.sql.SQLException;
  * An implementation of XAConnectionFactory which uses a real XADataSource to obtain connections and XAResources.
  *
  * @author Dain Sundstrom
- * @version $Revision$
+ * @since 2.0
  */
 public class DataSourceXAConnectionFactory implements XAConnectionFactory {
-	private TransactionRegistry transactionRegistry;
-	private XADataSource xaDataSource;
+    private final TransactionRegistry transactionRegistry;
+    private final XADataSource xaDataSource;
     private String username;
     private String password;
 
@@ -61,8 +61,12 @@ public class DataSourceXAConnectionFactory implements XAConnectionFactory {
      * @param password the password used for authenticating new connections
      */
     public DataSourceXAConnectionFactory(TransactionManager transactionManager, XADataSource xaDataSource, String username, String password) {
-        if (transactionManager == null) throw new NullPointerException("transactionManager is null");
-        if (xaDataSource == null) throw new NullPointerException("xaDataSource is null");
+        if (transactionManager == null) {
+            throw new NullPointerException("transactionManager is null");
+        }
+        if (xaDataSource == null) {
+            throw new NullPointerException("xaDataSource is null");
+        }
 
         this.transactionRegistry = new TransactionRegistry(transactionManager);
         this.xaDataSource = xaDataSource;

@@ -35,11 +35,9 @@ import java.sql.Blob;
 import java.sql.Clob;
 import java.sql.Array;
 import java.util.Calendar;
-/* JDBC_4_ANT_KEY_BEGIN */
 import java.sql.NClob;
 import java.sql.RowId;
 import java.sql.SQLXML;
-/* JDBC_4_ANT_KEY_END */
 
 /**
  * A base delegating implementation of {@link ResultSet}.
@@ -50,18 +48,19 @@ import java.sql.SQLXML;
  * <p>
  * Extends AbandonedTrace to implement result set tracking and
  * logging of code which created the ResultSet. Tracking the
- * ResultSet ensures that the Statment which created it can
+ * ResultSet ensures that the Statement which created it can
  * close any open ResultSet's on Statement close.
  *
  * @author Glenn L. Nielsen
  * @author James House
  * @author Dirk Verbeeck
  * @version $Revision$ $Date$
+ * @since 2.0
  */
-public class DelegatingResultSet extends AbandonedTrace implements ResultSet {
+public final class DelegatingResultSet extends AbandonedTrace implements ResultSet {
 
     /** My delegate. **/
-    private ResultSet _res;
+    private final ResultSet _res;
 
     /** The Statement that created me, if any. **/
     private Statement _stmt;
@@ -106,17 +105,15 @@ public class DelegatingResultSet extends AbandonedTrace implements ResultSet {
     public static ResultSet wrapResultSet(Statement stmt, ResultSet rset) {
         if(null == rset) {
             return null;
-        } else {
-            return new DelegatingResultSet(stmt,rset);
         }
+        return new DelegatingResultSet(stmt,rset);
     }
 
     public static ResultSet wrapResultSet(Connection conn, ResultSet rset) {
         if(null == rset) {
             return null;
-        } else {
-            return new DelegatingResultSet(conn,rset);
         }
+        return new DelegatingResultSet(conn,rset);
     }
 
     public ResultSet getDelegate() {
@@ -178,10 +175,10 @@ public class DelegatingResultSet extends AbandonedTrace implements ResultSet {
     }
 
     protected void handleException(SQLException e) throws SQLException {
-        if ((_stmt != null) && (_stmt instanceof DelegatingStatement)) {
+        if (_stmt != null && _stmt instanceof DelegatingStatement) {
             ((DelegatingStatement)_stmt).handleException(e);
         }
-        else if ((_conn != null) && (_conn instanceof DelegatingConnection)) {
+        else if (_conn != null && _conn instanceof DelegatingConnection) {
             ((DelegatingConnection<?>)_conn).handleException(e);
         }
         else {
@@ -715,38 +712,37 @@ public class DelegatingResultSet extends AbandonedTrace implements ResultSet {
     { try { return _res.getURL(columnName); } catch (SQLException e) { handleException(e); return null; } }
 
     @Override
-    public void updateRef(int columnIndex, java.sql.Ref x) throws SQLException
+    public void updateRef(int columnIndex, Ref x) throws SQLException
     { try { _res.updateRef(columnIndex, x); } catch (SQLException e) { handleException(e); } }
 
     @Override
-    public void updateRef(String columnName, java.sql.Ref x) throws SQLException
+    public void updateRef(String columnName, Ref x) throws SQLException
     { try { _res.updateRef(columnName, x); } catch (SQLException e) { handleException(e); } }
 
     @Override
-    public void updateBlob(int columnIndex, java.sql.Blob x) throws SQLException
+    public void updateBlob(int columnIndex, Blob x) throws SQLException
     { try { _res.updateBlob(columnIndex, x); } catch (SQLException e) { handleException(e); } }
 
     @Override
-    public void updateBlob(String columnName, java.sql.Blob x) throws SQLException
+    public void updateBlob(String columnName, Blob x) throws SQLException
     { try { _res.updateBlob(columnName, x); } catch (SQLException e) { handleException(e); } }
 
     @Override
-    public void updateClob(int columnIndex, java.sql.Clob x) throws SQLException
+    public void updateClob(int columnIndex, Clob x) throws SQLException
     { try { _res.updateClob(columnIndex, x); } catch (SQLException e) { handleException(e); } }
 
     @Override
-    public void updateClob(String columnName, java.sql.Clob x) throws SQLException
+    public void updateClob(String columnName, Clob x) throws SQLException
     { try { _res.updateClob(columnName, x); } catch (SQLException e) { handleException(e); } }
 
     @Override
-    public void updateArray(int columnIndex, java.sql.Array x) throws SQLException
+    public void updateArray(int columnIndex, Array x) throws SQLException
     { try { _res.updateArray(columnIndex, x); } catch (SQLException e) { handleException(e); } }
 
     @Override
-    public void updateArray(String columnName, java.sql.Array x) throws SQLException
+    public void updateArray(String columnName, Array x) throws SQLException
     { try { _res.updateArray(columnName, x); } catch (SQLException e) { handleException(e); } }
 
-/* JDBC_4_ANT_KEY_BEGIN */
 
     @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
@@ -1261,7 +1257,6 @@ public class DelegatingResultSet extends AbandonedTrace implements ResultSet {
             handleException(e);
         }
     }
-/* JDBC_4_ANT_KEY_END */
 
     @Override
     public <T> T getObject(int columnIndex, Class<T> type) throws SQLException {

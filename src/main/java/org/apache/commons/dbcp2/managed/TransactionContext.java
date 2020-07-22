@@ -34,7 +34,7 @@ import java.lang.ref.WeakReference;
  * to check the status of the transaction.
  *
  * @author Dain Sundstrom
- * @version $Revision$
+ * @since 2.0
  */
 public class TransactionContext {
     private final TransactionRegistry transactionRegistry;
@@ -51,8 +51,12 @@ public class TransactionContext {
      * @param transaction the transaction
      */
     public TransactionContext(TransactionRegistry transactionRegistry, Transaction transaction) {
-        if (transactionRegistry == null) throw new NullPointerException("transactionRegistry is null");
-        if (transaction == null) throw new NullPointerException("transaction is null");
+        if (transactionRegistry == null) {
+            throw new NullPointerException("transactionRegistry is null");
+        }
+        if (transaction == null) {
+            throw new NullPointerException("transaction is null");
+        }
         this.transactionRegistry = transactionRegistry;
         this.transactionRef = new WeakReference<>(transaction);
     }

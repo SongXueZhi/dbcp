@@ -17,7 +17,6 @@
 
 package org.apache.commons.dbcp2;
 
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -31,19 +30,21 @@ import org.apache.commons.pool2.KeyedObjectPool;
  * <p>
  * My {@link #close} method returns me to my containing pool. (See {@link PoolingConnection}.)
  *
+ * @param <K> the key type
+ *
  * @see PoolingConnection
  * @author Rodney Waldhoff
  * @author Glenn L. Nielsen
  * @author James House
  * @author Dirk Verbeeck
  * @version $Revision$ $Date$
+ * @since 2.0
  */
-public class PoolablePreparedStatement<K, S extends PoolablePreparedStatement<K,S>>
-        extends DelegatingPreparedStatement {
+public class PoolablePreparedStatement<K> extends DelegatingPreparedStatement {
     /**
      * The {@link KeyedObjectPool} from which I was obtained.
      */
-    private final KeyedObjectPool<K, PoolablePreparedStatement<K,S>> _pool;
+    private final KeyedObjectPool<K,PoolablePreparedStatement<K>> _pool;
 
     /**
      * My "key" as used by {@link KeyedObjectPool}.
@@ -57,10 +58,10 @@ public class PoolablePreparedStatement<K, S extends PoolablePreparedStatement<K,
      * @param stmt my underlying {@link PreparedStatement}
      * @param key my key" as used by {@link KeyedObjectPool}
      * @param pool the {@link KeyedObjectPool} from which I was obtained.
-     * @param conn the {@link Connection} from which I was created
+     * @param conn the {@link java.sql.Connection Connection} from which I was created
      */
     public PoolablePreparedStatement(PreparedStatement stmt, K key,
-            KeyedObjectPool<K, PoolablePreparedStatement<K,S>> pool,
+            KeyedObjectPool<K, PoolablePreparedStatement<K>> pool,
             DelegatingConnection<?> conn) {
         super(conn, stmt);
         _pool = pool;
@@ -138,13 +139,12 @@ public class PoolablePreparedStatement<K, S extends PoolablePreparedStatement<K,
         List<AbandonedTrace> resultSets = getTrace();
         if( resultSets != null) {
             ResultSet[] set = resultSets.toArray(new ResultSet[resultSets.size()]);
-            for (int i = 0; i < set.length; i++) {
-                set[i].close();
+            for (ResultSet element : set) {
+                element.close();
             }
             clearTrace();
         }
 
         super.passivate();
     }
-
 }
