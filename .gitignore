@@ -1,2 +1,4 @@
 /target/*
-
+target/osgi/MANIFEST.MF
+target/surefire-reports/TEST-org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource.xml
+target/surefire-reports/

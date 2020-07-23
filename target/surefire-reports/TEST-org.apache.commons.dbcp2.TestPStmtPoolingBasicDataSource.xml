@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="14.723" tests="52" errors="0" skipped="0" failures="0">
+<testsuite name="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="14.76" tests="52" errors="0" skipped="0" failures="0">
   <properties>
     <property name="java.runtime.name" value="OpenJDK Runtime Environment"/>
     <property name="sun.boot.library.path" value="/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/amd64"/>
@@ -59,56 +59,56 @@
     <property name="sun.io.unicode.encoding" value="UnicodeLittle"/>
     <property name="sun.cpu.isalist" value=""/>
   </properties>
-  <testcase name="testLRUBehavior" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.329"/>
+  <testcase name="testLRUBehavior" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.387"/>
   <testcase name="testPreparedStatementPooling" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.007"/>
-  <testcase name="testPStmtPoolingAccrossClose" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.003"/>
+  <testcase name="testPStmtPoolingAccrossClose" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0"/>
   <testcase name="testPStmtPoolingWithNoClose" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.003"/>
-  <testcase name="testPStmtCatalog" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.002"/>
-  <testcase name="testMultipleThreads1" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="10.155"/>
-  <testcase name="testEmptyValidationQuery" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.001"/>
-  <testcase name="testValidationQueryTimoutFail" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.002"/>
+  <testcase name="testPStmtCatalog" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.003"/>
+  <testcase name="testMultipleThreads1" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="10.157"/>
+  <testcase name="testEmptyValidationQuery" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0"/>
+  <testcase name="testValidationQueryTimoutFail" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0"/>
   <testcase name="testSetValidationTestProperties" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0"/>
-  <testcase name="testRollbackReadOnly" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.009"/>
-  <testcase name="testClose" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.008"/>
-  <testcase name="testPropertyTestOnReturn" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.005"/>
-  <testcase name="testValidationQueryTimeoutSucceed" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.003"/>
-  <testcase name="testMaxTotalZero" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.109"/>
-  <testcase name="testPooling" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.009"/>
+  <testcase name="testRollbackReadOnly" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.004"/>
+  <testcase name="testClose" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.003"/>
+  <testcase name="testPropertyTestOnReturn" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.002"/>
+  <testcase name="testValidationQueryTimeoutSucceed" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.002"/>
+  <testcase name="testMaxTotalZero" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.102"/>
+  <testcase name="testPooling" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.018"/>
   <testcase name="testValidationQueryTimeoutNegative" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.004"/>
-  <testcase name="testInvalidConnectionInitSql" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0"/>
-  <testcase name="testSetAutoCommitTrueOnClose" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.004"/>
-  <testcase name="testValidationQueryTimeoutZero" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.002"/>
-  <testcase name="testEmptyInitConnectionSql" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.002"/>
+  <testcase name="testInvalidConnectionInitSql" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.001"/>
+  <testcase name="testSetAutoCommitTrueOnClose" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.005"/>
+  <testcase name="testValidationQueryTimeoutZero" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.003"/>
+  <testcase name="testEmptyInitConnectionSql" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0"/>
   <testcase name="testDriverClassLoader" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.002"/>
   <testcase name="testInitialSize" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.004"/>
-  <testcase name="testInvalidValidationQuery" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0"/>
-  <testcase name="testNoAccessToUnderlyingConnectionAllowed" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.002"/>
+  <testcase name="testInvalidValidationQuery" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.001"/>
+  <testcase name="testNoAccessToUnderlyingConnectionAllowed" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.001"/>
   <testcase name="testCreateDataSourceCleanupEvictor" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="1.006"/>
-  <testcase name="testTransactionIsolationBehavior" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.007"/>
-  <testcase name="testCreateDataSourceCleanupThreads" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.001"/>
-  <testcase name="testDefaultCatalog" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.013"/>
-  <testcase name="testAccessToUnderlyingConnectionAllowed" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.002"/>
-  <testcase name="testSetProperties" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0"/>
-  <testcase name="testIsClosedFailure" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.004"/>
-  <testcase name="testThreaded" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="2.839"/>
-  <testcase name="testCanCloseStatementTwice" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.002"/>
+  <testcase name="testTransactionIsolationBehavior" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.006"/>
+  <testcase name="testCreateDataSourceCleanupThreads" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.002"/>
+  <testcase name="testDefaultCatalog" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.011"/>
+  <testcase name="testAccessToUnderlyingConnectionAllowed" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.003"/>
+  <testcase name="testSetProperties" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.001"/>
+  <testcase name="testIsClosedFailure" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.002"/>
+  <testcase name="testThreaded" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="2.842"/>
+  <testcase name="testCanCloseStatementTwice" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.008"/>
   <testcase name="testNoRsetClose" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.002"/>
-  <testcase name="testOpening" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.007"/>
-  <testcase name="testCanCloseConnectionTwice" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.001"/>
-  <testcase name="testIsClosed" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.005"/>
-  <testcase name="testCanCloseCallableStatementTwice" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.004"/>
-  <testcase name="testAutoCommitBehavior" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.003"/>
-  <testcase name="testHashing" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.005"/>
-  <testcase name="testCanClosePreparedStatementTwice" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.003"/>
-  <testcase name="testClosing" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.005"/>
-  <testcase name="testPrepareStatementOptions" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.003"/>
-  <testcase name="testBackPointers" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.004"/>
-  <testcase name="testHashCode" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.001"/>
-  <testcase name="testConnectionsAreDistinct" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.016"/>
-  <testcase name="testMaxTotal" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.106"/>
-  <testcase name="testRepeatedBorrowAndReturn" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.006"/>
+  <testcase name="testOpening" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.004"/>
+  <testcase name="testCanCloseConnectionTwice" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.004"/>
+  <testcase name="testIsClosed" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.002"/>
+  <testcase name="testCanCloseCallableStatementTwice" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.005"/>
+  <testcase name="testAutoCommitBehavior" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.002"/>
+  <testcase name="testHashing" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.002"/>
+  <testcase name="testCanClosePreparedStatementTwice" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.001"/>
+  <testcase name="testClosing" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.01"/>
+  <testcase name="testPrepareStatementOptions" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.002"/>
+  <testcase name="testBackPointers" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.006"/>
+  <testcase name="testHashCode" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.002"/>
+  <testcase name="testConnectionsAreDistinct" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.008"/>
+  <testcase name="testMaxTotal" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.109"/>
+  <testcase name="testRepeatedBorrowAndReturn" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.002"/>
   <testcase name="testCanCloseResultSetTwice" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.001"/>
-  <testcase name="testClearWarnings" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.006"/>
+  <testcase name="testClearWarnings" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.004"/>
   <testcase name="testSimple2" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.002"/>
-  <testcase name="testSimple" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.004"/>
+  <testcase name="testSimple" classname="org.apache.commons.dbcp2.TestPStmtPoolingBasicDataSource" time="0.002"/>
 </testsuite>
